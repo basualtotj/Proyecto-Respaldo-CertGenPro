@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Sistema de Certificados</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .admin-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-left: 5px solid #3498db;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .admin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-icon {
+            font-size: 2.5em;
+            margin-right: 15px;
+            opacity: 0.8;
+        }
+        
+        .card-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        
+        .status-online { background: #27ae60; }
+        .status-offline { background: #e74c3c; }
+        .status-loading { background: #f39c12; animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            color: #2c3e50;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn-success { background: linear-gradient(135deg, #27ae60, #229954); }
+        .btn-warning { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #3498db;
+            padding-left: 10px;
+        }
+        
+        .log-error { border-left-color: #e74c3c; }
+        .log-success { border-left-color: #27ae60; }
+        .log-warning { border-left-color: #f39c12; }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            background: #ecf0f1;
+        }
+        
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ Panel de Administración</h1>
+            <p>Sistema de Certificados de Mantenimiento - Monitoreo y Control</p>
+        </div>
+        
+        <div class="admin-grid">
+            <!-- Estado del Sistema -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <div class="card-icon">🖥️</div>
+                    <div>
+                        <div class="card-title">Estado del Sistema</div>
+                        <span class="status-indicator status-loading" id="systemStatus"></span>
+                    </div>
+                </div>
+                <div id="systemMetrics">
+                    <div class="metric">
+                        <span class="metric-label">Modo</span>
+                        <span class="metric-value" id="currentMode">Detectando...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Base de Datos</span>
+                        <span class="metric-value" id="dbStatus">Verificando...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">API</span>
+                        <span class="metric-value" id="apiStatus">Verificando...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Cache</span>
+                        <span class="metric-value" id="cacheStatus">Sin datos</span>
+                    </div>
+                </div>
+                <div class="controls-grid">
+                    <button class="btn btn-success" onclick="refreshStatus()">🔄 Actualizar</button>
+                    <button class="btn btn-warning" onclick="clearCache()">🧹 Limpiar Cache</button>
+                </div>
+            </div>
+            
+            <!-- Controles de Modo -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <div class="card-icon">⚙️</div>
+                    <div class="card-title">Control de Modo</div>
+                </div>
+                <div class="controls-grid">
+                    <button class="btn" onclick="setMode('json')">📄 Modo JSON</button>
+                    <button class="btn" onclick="setMode('api')">🗄️ Modo MySQL</button>
+                    <button class="btn btn-warning" onclick="testConnection()">🔍 Test Conexión</button>
+                    <button class="btn btn-danger" onclick="forceReset()">🔄 Reset Sistema</button>
+                </div>
+                <div id="modeMessage"></div>
+            </div>
+            
+            <!-- Estadísticas -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">Estadísticas</div>
+                </div>
+                <div id="statsContainer">
+                    <div class="metric">
+                        <span class="metric-label">Clientes</span>
+                        <span class="metric-value" id="clientesCount">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Técnicos</span>
+                        <span class="metric-value" id="tecnicosCount">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Certificados Hoy</span>
+                        <span class="metric-value" id="certificadosHoy">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Este Mes</span>
+                        <span class="metric-value" id="certificadosMes">-</span>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="loadStats()" style="width: 100%; margin-top: 15px;">📈 Cargar Estadísticas</button>
+            </div>
+            
+            <!-- Log de Actividad -->
+            <div class="admin-card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <div class="card-icon">📝</div>
+                    <div class="card-title">Log de Actividad</div>
+                </div>
+                <div class="controls-grid">
+                    <button class="btn" onclick="clearLog()">🧹 Limpiar Log</button>
+                    <button class="btn btn-success" onclick="testAllEndpoints()">🧪 Test Todos los Endpoints</button>
+                </div>
+                <div class="log-container" id="activityLog">
+                    <div class="log-entry">🚀 Panel de administración iniciado...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 Sistema de Certificados de Mantenimiento - Panel Admin v1.0.0</p>
+        </div>
+    </div>
+
+    <script>
+        // Instanciar DataService
+        let dataService;
+        
+        // Inicializar cuando cargue la página
+        window.addEventListener('DOMContentLoaded', async () => {
+            addLog('🎯 Inicializando panel de administración...', 'success');
+            
+            try {
+                // Importar DataService
+                if (typeof DataService === 'undefined') {
+                    addLog('📥 Cargando DataService...', 'warning');
+                    await loadScript('../js/data-service.js');
+                }
+                
+                dataService = new DataService();
+                addLog('✅ DataService inicializado correctamente', 'success');
+                
+                // Cargar estado inicial
+                await refreshStatus();
+                await loadStats();
+                
+            } catch (error) {
+                addLog(`❌ Error inicializando: ${error.message}`, 'error');
+            }
+        });
+        
+        // Cargar script dinámicamente
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Actualizar estado del sistema
+        async function refreshStatus() {
+            addLog('🔄 Actualizando estado del sistema...', 'warning');
+            
+            try {
+                const status = dataService.getStatus();
+                
+                document.getElementById('currentMode').textContent = status.mode.toUpperCase();
+                document.getElementById('cacheStatus').textContent = 
+                    Object.values(status.cacheStatus).some(v => v) ? 'Con datos' : 'Vacío';
+                
+                // Test de conexión
+                const connection = await dataService.testConnection();
+                
+                if (connection.status === 'connected' || connection.status === 'loaded') {
+                    document.getElementById('systemStatus').className = 'status-indicator status-online';
+                    document.getElementById('dbStatus').textContent = 'Conectado';
+                    document.getElementById('apiStatus').textContent = 
+                        connection.mode === 'api' ? 'Disponible' : 'JSON Mode';
+                    
+                    addLog(`✅ Sistema operativo en modo ${connection.mode.toUpperCase()}`, 'success');
+                } else {
+                    document.getElementById('systemStatus').className = 'status-indicator status-offline';
+                    document.getElementById('dbStatus').textContent = 'Error';
+                    document.getElementById('apiStatus').textContent = 'No disponible';
+                    
+                    addLog(`❌ Error de conexión: ${connection.error}`, 'error');
+                }
+                
+            } catch (error) {
+                document.getElementById('systemStatus').className = 'status-indicator status-offline';
+                addLog(`❌ Error actualizando estado: ${error.message}`, 'error');
+            }
+        }
+        
+        // Cargar estadísticas
+        async function loadStats() {
+            addLog('📊 Cargando estadísticas...', 'warning');
+            
+            try {
+                const clientes = await dataService.getClientes();
+                const tecnicos = await dataService.getTecnicos();
+                
+                document.getElementById('clientesCount').textContent = clientes.length;
+                document.getElementById('tecnicosCount').textContent = tecnicos.length;
+                
+                // Si estamos en modo API, obtener estadísticas de certificados
+                if (dataService.mode === 'api') {
+                    try {
+                        const stats = await dataService.apiCall('/estadisticas');
+                        const total = stats.reduce((sum, stat) => sum + stat.hoy, 0);
+                        const mes = stats.reduce((sum, stat) => sum + stat.este_mes, 0);
+                        
+                        document.getElementById('certificadosHoy').textContent = total;
+                        document.getElementById('certificadosMes').textContent = mes;
+                    } catch (error) {
+                        document.getElementById('certificadosHoy').textContent = 'N/A';
+                        document.getElementById('certificadosMes').textContent = 'N/A';
+                    }
+                } else {
+                    document.getElementById('certificadosHoy').textContent = 'Solo en MySQL';
+                    document.getElementById('certificadosMes').textContent = 'Solo en MySQL';
+                }
+                
+                addLog(`✅ Estadísticas cargadas: ${clientes.length} clientes, ${tecnicos.length} técnicos`, 'success');
+                
+            } catch (error) {
+                addLog(`❌ Error cargando estadísticas: ${error.message}`, 'error');
+            }
+        }
+        
+        // Cambiar modo
+        async function setMode(mode) {
+            addLog(`🔄 Cambiando a modo ${mode.toUpperCase()}...`, 'warning');
+            
+            try {
+                const oldMode = dataService.mode;
+                dataService.setMode(mode);
+                
+                showMessage(`Modo cambiado de ${oldMode.toUpperCase()} a ${mode.toUpperCase()}`, 'success');
+                addLog(`✅ Modo cambiado exitosamente a ${mode.toUpperCase()}`, 'success');
+                
+                // Actualizar estado
+                await refreshStatus();
+                await loadStats();
+                
+            } catch (error) {
+                addLog(`❌ Error cambiando modo: ${error.message}`, 'error');
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test de conexión
+        async function testConnection() {
+            addLog('🔍 Probando conexión...', 'warning');
+            
+            try {
+                const result = await dataService.testConnection();
+                
+                if (result.status === 'connected' || result.status === 'loaded') {
+                    addLog(`✅ Conexión exitosa en modo ${result.mode}`, 'success');
+                    showMessage(`Conexión OK - Modo ${result.mode.toUpperCase()}`, 'success');
+                } else {
+                    addLog(`❌ Error de conexión: ${result.error}`, 'error');
+                    showMessage(`Error: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error en test: ${error.message}`, 'error');
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Limpiar cache
+        function clearCache() {
+            addLog('🧹 Limpiando cache...', 'warning');
+            
+            dataService.cache = {
+                clientes: null,
+                tecnicos: null,
+                configuracion: null,
+                checklists: null,
+                allData: null
+            };
+            
+            addLog('✅ Cache limpiado', 'success');
+            showMessage('Cache limpiado correctamente', 'success');
+            refreshStatus();
+        }
+        
+        // Reset completo del sistema
+        async function forceReset() {
+            if (!confirm('¿Estás seguro de resetear completamente el sistema?')) {
+                return;
+            }
+            
+            addLog('🔄 Reseteando sistema completo...', 'warning');
+            
+            try {
+                // Limpiar cache
+                clearCache();
+                
+                // Reinicializar DataService
+                dataService = new DataService();
+                
+                // Actualizar todo
+                await refreshStatus();
+                await loadStats();
+                
+                addLog('✅ Sistema reseteado completamente', 'success');
+                showMessage('Sistema reseteado correctamente', 'success');
+                
+            } catch (error) {
+                addLog(`❌ Error en reset: ${error.message}`, 'error');
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test de todos los endpoints
+        async function testAllEndpoints() {
+            addLog('🧪 Iniciando test de todos los endpoints...', 'warning');
+            
+            const endpoints = [
+                { name: 'Health Check', call: () => dataService.mode === 'api' ? dataService.apiCall('/health') : Promise.resolve('JSON mode') },
+                { name: 'Clientes', call: () => dataService.getClientes() },
+                { name: 'Técnicos', call: () => dataService.getTecnicos() },
+                { name: 'Configuración', call: () => dataService.getConfiguracion() },
+                { name: 'Checklist CCTV', call: () => dataService.getChecklist('cctv') }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    addLog(`🔍 Testing ${endpoint.name}...`, 'warning');
+                    const result = await endpoint.call();
+                    addLog(`✅ ${endpoint.name}: OK (${Array.isArray(result) ? result.length : 'object'} items)`, 'success');
+                } catch (error) {
+                    addLog(`❌ ${endpoint.name}: Error - ${error.message}`, 'error');
+                }
+                
+                // Pausa entre tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            addLog('🏁 Test de endpoints completado', 'success');
+        }
+        
+        // Agregar entrada al log
+        function addLog(message, type = '') {
+            const log = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            
+            log.insertBefore(entry, log.firstChild);
+            
+            // Limitar a 50 entradas
+            if (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+        
+        // Limpiar log
+        function clearLog() {
+            document.getElementById('activityLog').innerHTML = '';
+            addLog('🧹 Log limpiado', 'success');
+        }
+        
+        // Mostrar mensaje
+        function showMessage(message, type) {
+            const container = document.getElementById('modeMessage');
+            container.innerHTML = `<div class="${type === 'error' ? 'error-message' : 'success-message'}">${message}</div>`;
+            
+            // Limpiar después de 5 segundos
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

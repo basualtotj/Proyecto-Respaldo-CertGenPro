@@ -1,0 +1,41 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Iniciar servidor web local",
+			"type": "shell",
+			"command": "python3 -m http.server 8000",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Launch Certificate Generator",
+			"type": "shell",
+			"command": "python3 -m http.server 8080",
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "Start local PHP + open app",
+			"type": "shell",
+			"command": "php -S 127.0.0.1:8083 router.php",
+			"args": [],
+			"isBackground": true,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run PHP Server (router.php @127.0.0.1:8083)",
+			"type": "shell",
+			"command": "php -S 127.0.0.1:8083 router.php",
+			"isBackground": true,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		}
+	]
+}

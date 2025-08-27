@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Abrir app en navegador (http://127.0.0.1:8082)",
+  "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:8082"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Iniciar servidor PHP y abrir navegador",
+  "configurations": ["Abrir app en navegador (http://127.0.0.1:8082)"],
+      "preLaunchTask": "Run PHP Server (router.php @127.0.0.1:8082)"
+    }
+  ]
+}

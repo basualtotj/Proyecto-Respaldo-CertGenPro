@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CRUD - Gestión de Datos</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto p-6">
+        <h1 class="text-2xl font-bold mb-4">Test CRUD System</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <h2 class="text-lg font-semibold mb-2">Estado del Sistema</h2>
+            <div id="systemStatus" class="text-gray-600">Inicializando...</div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Clientes</h2>
+            <div id="clientesList" class="space-y-2">
+                <div class="text-gray-600">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data-service.js"></script>
+    <script>
+        let testDataService = null;
+        
+        async function initTest() {
+            const statusDiv = document.getElementById('systemStatus');
+            const clientesDiv = document.getElementById('clientesList');
+            
+            try {
+                statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verificando DataService...';
+                
+                // Verificar que DataService esté disponible
+                if (typeof DataService === 'undefined') {
+                    throw new Error('DataService no está disponible');
+                }
+                
+                console.log('✅ DataService encontrado');
+                statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando instancia...';
+                
+                // Crear instancia
+                testDataService = new DataService();
+                console.log('✅ Instancia creada:', testDataService);
+                console.log('Modo detectado:', testDataService.mode);
+                console.log('JSON Path:', testDataService.jsonPath);
+                
+                statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Inicializando...';
+                
+                // Inicializar
+                await testDataService.init();
+                console.log('✅ DataService inicializado');
+                statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Cargando clientes...';
+                
+                // Cargar clientes
+                const clientes = await testDataService.getClientes();
+                console.log('✅ Clientes cargados:', clientes);
+                
+                statusDiv.innerHTML = `<i class="fas fa-check text-green-500 mr-2"></i>Sistema funcionando - Modo: ${testDataService.mode}`;
+                
+                // Mostrar clientes
+                if (clientes && clientes.length > 0) {
+                    clientesDiv.innerHTML = clientes.map(cliente => `
+                        <div class="flex items-center justify-between bg-gray-50 p-3 rounded">
+                            <div>
+                                <strong>${cliente.nombre}</strong>
+                                ${cliente.rut ? ` - ${cliente.rut}` : ''}
+                                ${cliente.contacto ? ` - ${cliente.contacto}` : ''}
+                            </div>
+                            <span class="text-sm text-gray-500">ID: ${cliente.id}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    clientesDiv.innerHTML = '<div class="text-yellow-600"><i class="fas fa-exclamation-triangle mr-2"></i>No se encontraron clientes (array vacío o null)</div>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en test:', error);
+                statusDiv.innerHTML = `<i class="fas fa-times text-red-500 mr-2"></i>Error: ${error.message}`;
+                clientesDiv.innerHTML = `<div class="text-red-600">Error al cargar clientes: ${error.message}</div>`;
+            }
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 DOM cargado, iniciando test...');
+            setTimeout(initTest, 200);
+        });
+    </script>
+</body>
+</html>

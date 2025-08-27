@@ -1,0 +1,73 @@
+# ============================================
+# .htaccess para API en cPanel
+# Colocar este archivo en la carpeta /api/
+# ============================================
+
+# Habilitar rewrite engine
+RewriteEngine On
+
+# Forzar HTTPS en producción (opcional)
+# RewriteCond %{HTTPS} !=on
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Headers de seguridad
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# CORS headers para la API
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Max-Age "3600"
+
+# Manejar preflight OPTIONS requests
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Rewrite todas las rutas a index.php (excepto archivos reales)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Cache para archivos estáticos (opcional)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType application/json "access plus 1 hour"
+</IfModule>
+
+# Comprimir respuestas JSON
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE text/plain
+</IfModule>
+
+# Limitar tamaño de archivos subidos
+LimitRequestBody 10485760
+
+# Bloquear acceso directo a archivos de configuración
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "*.sql">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Logs de error (ajustar path según cPanel)
+# ErrorLog /home/tuusuario/error_logs/api_errors.log
+
+# Configuraciones de PHP para la API
+<IfModule mod_php7.c>
+    php_value memory_limit 256M
+    php_value max_execution_time 30
+    php_value post_max_size 10M
+    php_value upload_max_filesize 5M
+    php_value max_input_vars 3000
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value error_reporting "E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT"
+</IfModule>
