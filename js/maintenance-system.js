@@ -35,6 +35,7 @@ class MaintenanceCertificateSystem {
     // Evidencias fotográficas y datos de empresa
     this.evidencias = [];
     this.empresa = null;
+    this._empresaLogoDataUrl = null; // cache para logo embed en PDF
     // Detectar si existe la vista previa en el DOM (se eliminó del index por requerimiento)
     this.previewEnabled = !!document.getElementById('certificatePreview');
         
@@ -1708,6 +1709,10 @@ class MaintenanceCertificateSystem {
             <div style="position: absolute; bottom: 20px; left: 60px; right: 60px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 10px;">
                 <strong>Código de Validación:</strong> ${codigo} | 
                 <strong>Generado el:</strong> ${new Date().toLocaleDateString('es-ES')}
+                <div style="margin-top: 6px; font-size: 11px; color: #64748b; line-height: 1.4;">
+                    <div>🏢 Redes y CCTV &nbsp;•&nbsp; 📍 María Eugenia López 9726 &nbsp;•&nbsp; 📍 Antofagasta</div>
+                    <div>🌐 www.redesycctv.cl &nbsp;•&nbsp; ☎ +569 630 67169</div>
+                </div>
             </div>
         `;
     }
@@ -1787,28 +1792,81 @@ class MaintenanceCertificateSystem {
     const imgData = canvas.toDataURL('image/jpeg', 0.82);
         pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
 
-        // Anexos de Evidencia Fotográfica: Collage con estilo (3x3 por página, marco y sombra)
+        // Anexo - Evidencia Fotográfica: repetir encabezado (título, sistema, fecha, código) y pie de validación
         const evidencias = Array.isArray(formData.evidencias) ? formData.evidencias : [];
         if (evidencias.length > 0) {
             // Definir layout: 3 columnas x 3 filas por página (máx 9 por página)
             const perPage = 9;
+            const code = this.assignedCertificateNumber || this.generateCertificateNumber();
+            const fechaText = formData.fecha_mantenimiento ? new Date(formData.fecha_mantenimiento).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+            const systemLabel = (this.currentCertificateType || '').toLowerCase() === 'cctv' ? 'SISTEMA CCTV' : (this.currentCertificateType ? `SISTEMA ${this.currentCertificateType.toUpperCase()}` : 'SISTEMA');
+            const todayText = new Date().toLocaleDateString('es-ES');
+            // Preparar logo empresa en data URL (si es posible)
+            const logoDataUrl = await this.getEmpresaLogoDataUrl();
             // Empezar desde el índice 0 (todas van a anexos)
             for (let i = 0; i < evidencias.length; i += perPage) {
                 pdf.addPage('a4', 'portrait');
-                // Encabezado anexo (mismo estilo que títulos de página 1)
-                pdf.setFontSize(16);
+                // Encabezado estilo hoja 1
+                // Título
+                pdf.setFontSize(18);
+                pdf.setTextColor(30, 64, 175); // azul
+                pdf.text('CERTIFICADO DE MANTENIMIENTO', pdfWidth / 2, margin + 8, { align: 'center' });
+                // Subtítulo (sistema)
+                pdf.setFontSize(12);
+                pdf.setTextColor(55, 65, 81); // gris oscuro
+                pdf.text(systemLabel, pdfWidth / 2, margin + 14, { align: 'center' });
+                // Línea divisoria
+                pdf.setDrawColor(30, 64, 175);
+                pdf.line(margin, margin + 16, pdfWidth - margin, margin + 16);
+                // Barra vertical izquierda (estilo)
+                pdf.setDrawColor(30, 64, 175);
+                pdf.setFillColor(30, 64, 175);
+                pdf.rect(margin - 1.5, margin + 2, 3, 16, 'F');
+                // Logo empresa (si está disponible como data URL)
+                try {
+                    if (logoDataUrl) {
+                        const logoW = 28; // mm
+                        const logoH = 12; // mm aprox
+                        const logoX = pdfWidth - margin - logoW;
+                        const logoY = margin + 2;
+                        const fmt = logoDataUrl.includes('png') ? 'PNG' : 'JPEG';
+                        pdf.addImage(logoDataUrl, fmt, logoX, logoY, logoW, logoH, undefined, 'FAST');
+                    }
+                } catch (_) {}
+                // Banda de fecha y código (rectángulo azul claro con textos)
+                const bandY = margin + 18;
+                const bandH = 12;
+                pdf.setFillColor(219, 234, 254); // azul claro
+                pdf.setDrawColor(226, 232, 240); // borde sutil
+                pdf.rect(margin, bandY, pdfWidth - margin * 2, bandH, 'FD');
+                pdf.setFontSize(11);
+                // Fecha (izquierda)
+                pdf.setTextColor(100, 116, 139);
+                pdf.text('Fecha:', margin + 4, bandY + 8);
                 pdf.setTextColor(30, 64, 175);
-                pdf.text('ANEXO - EVIDENCIA FOTOGRÁFICA', margin, margin + 6);
+                pdf.text(fechaText, margin + 24, bandY + 8);
+                // Código (derecha)
+                pdf.setTextColor(100, 116, 139);
+                const rightLabel = 'Certificado N°:';
+                const rightTextWidth = pdf.getTextWidth(rightLabel);
+                const rightValWidth = pdf.getTextWidth(code);
+                const totalRight = rightTextWidth + 2 + rightValWidth;
+                const rightStart = pdfWidth - margin - totalRight;
+                pdf.text(rightLabel, rightStart, bandY + 8);
+                pdf.setTextColor(30, 64, 175);
+                pdf.text(code, rightStart + rightTextWidth + 2, bandY + 8);
 
                 const gridX = margin;
-                const gridY = margin + 12;
+                const headerH = 36; // espacio ocupado por encabezado + banda
+                const footerH = 14; // espacio reservado para pie
+                const gridY = margin + headerH;
                 const gridW = pdfWidth - margin * 2;
                 const cols = 3;
                 const rows = 3;
-                const hGap = 6; // horizontal gap mm
-                const vGap = 8; // vertical gap mm
+                const hGap = 6; // separación horizontal
+                const vGap = 8; // separación vertical
                 const cellW = (gridW - hGap * (cols - 1)) / cols;
-                const availableH = pdfHeight - gridY - margin - (vGap * (rows - 1));
+                const availableH = pdfHeight - gridY - margin - footerH - (vGap * (rows - 1));
                 const cellH = availableH / rows;
 
                 const slice = evidencias.slice(i, i + perPage);
@@ -1834,15 +1892,14 @@ class MaintenanceCertificateSystem {
                     const ox = cx + (maxW - drawW) / 2;
                     const oy = cy + (maxH - drawH) / 2;
 
-                    // Marco blanco y sombra (rectángulos con borde y sombra simple)
-                    // Sombra suave: gris claro detrás
-                    pdf.setFillColor(240, 240, 240);
-                    const shadowOffset = 1.2; // mm
-                    pdf.rect(ox + shadowOffset, oy + shadowOffset, drawW, drawH, 'F');
-                    // Marco blanco con borde sutil
-                    pdf.setDrawColor(210, 210, 210);
+                    // Contenedor de celda: marco sutil con borde
+                    pdf.setDrawColor(215, 219, 223);
                     pdf.setFillColor(255, 255, 255);
-                    pdf.rect(ox, oy, drawW, drawH, 'FD');
+                    const frameX = cx;
+                    const frameY = cy;
+                    const frameW = maxW;
+                    const frameH = maxH;
+                    pdf.rect(frameX, frameY, frameW, frameH, 'S');
 
                     // Pre-redimensionar/comprimir en un canvas para reducir peso
                     try {
@@ -1881,6 +1938,19 @@ class MaintenanceCertificateSystem {
                         } catch (_) {}
                     }
                 });
+
+                // Pie con código de validación (mismo concepto que hoja 1)
+                pdf.setDrawColor(229, 231, 235);
+                const footerY = pdfHeight - margin - 6;
+                pdf.line(margin, footerY, pdfWidth - margin, footerY);
+                pdf.setFontSize(10);
+                pdf.setTextColor(107, 114, 128);
+                pdf.text(`Código de Validación: ${code} | Generado el: ${todayText} | Puede validar este certificado usando este código`, pdfWidth / 2, footerY + 5, { align: 'center' });
+                // Línea de contacto debajo del código
+                pdf.setFontSize(9);
+                pdf.setTextColor(100, 116, 139);
+                pdf.text('🏢 Redes y CCTV  •  📍 María Eugenia López 9726  •  📍 Antofagasta', pdfWidth / 2, footerY + 10, { align: 'center' });
+                pdf.text('🌐 www.redesycctv.cl  •  ☎ +569 630 67169', pdfWidth / 2, footerY + 14, { align: 'center' });
             }
         }
 
@@ -2028,6 +2098,33 @@ class MaintenanceCertificateSystem {
      */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Convertir el logo de empresa a data URL para incrustarlo en jsPDF
+     */
+    async getEmpresaLogoDataUrl() {
+        if (this._empresaLogoDataUrl) return this._empresaLogoDataUrl;
+        try {
+            const src = this.empresa && typeof this.empresa.logo_empresa === 'string' ? this.empresa.logo_empresa : null;
+            if (!src) return null;
+            if (/^data:image\//.test(src)) {
+                this._empresaLogoDataUrl = src;
+                return src;
+            }
+            const resp = await fetch(src, { mode: 'cors' });
+            if (!resp.ok) return null;
+            const blob = await resp.blob();
+            const dataUrl = await new Promise((resolve) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.readAsDataURL(blob);
+            });
+            this._empresaLogoDataUrl = typeof dataUrl === 'string' ? dataUrl : null;
+            return this._empresaLogoDataUrl;
+        } catch (_) {
+            return null;
+        }
     }
 }
 
