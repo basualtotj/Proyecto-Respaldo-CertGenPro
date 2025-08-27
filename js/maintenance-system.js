@@ -1682,7 +1682,7 @@ class MaintenanceCertificateSystem {
             ${''}
 
             <!-- Firmas -->
-            <div style="position: absolute; bottom: 80px; left: 60px; right: 60px;">
+            <div style="position: absolute; bottom: 110px; left: 60px; right: 60px;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px;">
                     <div style="text-align: center;">
                         <div style="height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
@@ -1709,9 +1709,8 @@ class MaintenanceCertificateSystem {
             <div style="position: absolute; bottom: 20px; left: 60px; right: 60px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 10px;">
                 <strong>Código de Validación:</strong> ${codigo} | 
                 <strong>Generado el:</strong> ${new Date().toLocaleDateString('es-ES')}
-                <div style="margin-top: 6px; font-size: 11px; color: #64748b; line-height: 1.4;">
-                    <div>🏢 Redes y CCTV &nbsp;•&nbsp; 📍 María Eugenia López 9726 &nbsp;•&nbsp; 📍 Antofagasta</div>
-                    <div>🌐 www.redesycctv.cl &nbsp;•&nbsp; ☎ +569 630 67169</div>
+                <div style="margin-top: 6px; font-size: 12px; color: #475569; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    🏢 Redes y CCTV &nbsp;•&nbsp; 📍 María Eugenia López 9726, Antofagasta &nbsp;•&nbsp; 🌐 www.redesycctv.cl &nbsp;•&nbsp; ☎ +56 9 630 671 69
                 </div>
             </div>
         `;
@@ -1803,16 +1802,20 @@ class MaintenanceCertificateSystem {
             const todayText = new Date().toLocaleDateString('es-ES');
             // Preparar logo empresa en data URL (si es posible)
             const logoDataUrl = await this.getEmpresaLogoDataUrl();
+            let logoDims = null;
+            if (logoDataUrl) {
+                try { logoDims = await this.getImageDimensions(logoDataUrl); } catch(_) { logoDims = null; }
+            }
             // Empezar desde el índice 0 (todas van a anexos)
             for (let i = 0; i < evidencias.length; i += perPage) {
                 pdf.addPage('a4', 'portrait');
                 // Encabezado estilo hoja 1
-                // Título
-                pdf.setFontSize(18);
+                // Título (mismo tamaño de hoja 1)
+                pdf.setFontSize(16);
                 pdf.setTextColor(30, 64, 175); // azul
                 pdf.text('CERTIFICADO DE MANTENIMIENTO', pdfWidth / 2, margin + 8, { align: 'center' });
                 // Subtítulo (sistema)
-                pdf.setFontSize(12);
+                pdf.setFontSize(10);
                 pdf.setTextColor(55, 65, 81); // gris oscuro
                 pdf.text(systemLabel, pdfWidth / 2, margin + 14, { align: 'center' });
                 // Línea divisoria
@@ -1821,12 +1824,18 @@ class MaintenanceCertificateSystem {
                 // Barra vertical izquierda (estilo)
                 pdf.setDrawColor(30, 64, 175);
                 pdf.setFillColor(30, 64, 175);
-                pdf.rect(margin - 1.5, margin + 2, 3, 16, 'F');
+        pdf.rect(margin - 1.2, margin + 2, 2.4, 16, 'F');
                 // Logo empresa (si está disponible como data URL)
                 try {
                     if (logoDataUrl) {
-                        const logoW = 28; // mm
-                        const logoH = 12; // mm aprox
+                        // Mantener proporción con base a dimensiones reales
+                        const targetH = 8; // mm
+                        let logoW = 22, logoH = targetH;
+                        if (logoDims && logoDims.w && logoDims.h) {
+                            const ratio = logoDims.w / logoDims.h;
+                            logoW = Math.min(26, Math.max(16, targetH * ratio));
+                            logoH = targetH;
+                        }
                         const logoX = pdfWidth - margin - logoW;
                         const logoY = margin + 2;
                         const fmt = logoDataUrl.includes('png') ? 'PNG' : 'JPEG';
@@ -1834,12 +1843,12 @@ class MaintenanceCertificateSystem {
                     }
                 } catch (_) {}
                 // Banda de fecha y código (rectángulo azul claro con textos)
-                const bandY = margin + 18;
-                const bandH = 12;
+        const bandY = margin + 18;
+        const bandH = 10;
                 pdf.setFillColor(219, 234, 254); // azul claro
                 pdf.setDrawColor(226, 232, 240); // borde sutil
                 pdf.rect(margin, bandY, pdfWidth - margin * 2, bandH, 'FD');
-                pdf.setFontSize(11);
+        pdf.setFontSize(10);
                 // Fecha (izquierda)
                 pdf.setTextColor(100, 116, 139);
                 pdf.text('Fecha:', margin + 4, bandY + 8);
@@ -1851,13 +1860,13 @@ class MaintenanceCertificateSystem {
                 const rightTextWidth = pdf.getTextWidth(rightLabel);
                 const rightValWidth = pdf.getTextWidth(code);
                 const totalRight = rightTextWidth + 2 + rightValWidth;
-                const rightStart = pdfWidth - margin - totalRight;
+                const rightStart = pdfWidth - margin - 2 - totalRight; // pequeño margen interno extra
                 pdf.text(rightLabel, rightStart, bandY + 8);
                 pdf.setTextColor(30, 64, 175);
                 pdf.text(code, rightStart + rightTextWidth + 2, bandY + 8);
 
                 const gridX = margin;
-                const headerH = 36; // espacio ocupado por encabezado + banda
+        const headerH = 33; // espacio ocupado por encabezado + banda
                 const footerH = 14; // espacio reservado para pie
                 const gridY = margin + headerH;
                 const gridW = pdfWidth - margin * 2;
@@ -1943,14 +1952,13 @@ class MaintenanceCertificateSystem {
                 pdf.setDrawColor(229, 231, 235);
                 const footerY = pdfHeight - margin - 6;
                 pdf.line(margin, footerY, pdfWidth - margin, footerY);
-                pdf.setFontSize(10);
+                pdf.setFontSize(9);
                 pdf.setTextColor(107, 114, 128);
                 pdf.text(`Código de Validación: ${code} | Generado el: ${todayText} | Puede validar este certificado usando este código`, pdfWidth / 2, footerY + 5, { align: 'center' });
                 // Línea de contacto debajo del código
                 pdf.setFontSize(9);
                 pdf.setTextColor(100, 116, 139);
-                pdf.text('🏢 Redes y CCTV  •  📍 María Eugenia López 9726  •  📍 Antofagasta', pdfWidth / 2, footerY + 10, { align: 'center' });
-                pdf.text('🌐 www.redesycctv.cl  •  ☎ +569 630 67169', pdfWidth / 2, footerY + 14, { align: 'center' });
+                pdf.text('Redes y CCTV  •  María Eugenia López 9726, Antofagasta  •  www.redesycctv.cl  •  +56 9 630 671 69', pdfWidth / 2, footerY + 10, { align: 'center' });
             }
         }
 
@@ -2125,6 +2133,18 @@ class MaintenanceCertificateSystem {
         } catch (_) {
             return null;
         }
+    }
+
+    /** Obtener dimensiones de una imagen (data URL o URL) */
+    getImageDimensions(src) {
+        return new Promise((resolve, reject) => {
+            try {
+                const img = new Image();
+                img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+                img.onerror = reject;
+                img.src = src;
+            } catch (e) { reject(e); }
+        });
     }
 }
 
