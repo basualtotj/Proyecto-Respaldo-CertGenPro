@@ -8,8 +8,10 @@ class DataService {
     this.isProduction = window.location.hostname !== 'localhost';
     this.mode = 'api'; // SIEMPRE API
 
-    // URLs: usar siempre mismo origen (host+puerto)/api
+        // URLs: por defecto usar mismo origen (host+puerto)/api
     this.apiUrl = `${window.location.origin}/api`;
+    // Alternativa local común: backend PHP en :8083
+    this._apiAlternate = `${window.location.protocol}//${window.location.hostname}:8083/api`;
     // Ruta JSON legada solo para diagnósticos; no se usa en producción
     this.jsonPath = './data/database.json';
         
@@ -51,7 +53,21 @@ class DataService {
                 return false;
             }
         } catch (error) {
-            console.warn('⚠️ Error de conexión API temporal, pero manteniendo modo API:', error.message);
+            console.warn('⚠️ Error de conexión API temporal con', this.apiUrl, error.message);
+            // Intentar fallback local en :8083 (útil para entornos de desarrollo donde el frontend se sirve en 8080)
+            if (this._apiAlternate && this._apiAlternate !== this.apiUrl) {
+                try {
+                    console.log('🔁 Intentando fallback API en', this._apiAlternate);
+                    const resp2 = await fetch(`${this._apiAlternate}/health`);
+                    if (resp2.ok) {
+                        console.log('✅ Fallback API disponible en', this._apiAlternate, '- ajustando apiUrl');
+                        this.apiUrl = this._apiAlternate;
+                        return true;
+                    }
+                } catch (e2) {
+                    console.warn('⚠️ Fallback en :8083 también falló:', e2.message);
+                }
+            }
             // NO cambiar a JSON automáticamente
             return false;
         }

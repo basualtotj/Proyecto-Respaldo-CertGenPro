@@ -339,7 +339,7 @@
 
     async function generateAndDownloadPDF(detail, empresa) {
       const container = document.createElement('div');
-      container.style.cssText = 'width:1200px;height:1600px;padding:60px;background:white;color:#333;position:relative;box-sizing:border-box;font-family:Arial, sans-serif;';
+      container.style.cssText = 'width:1200px;min-height:1620px;padding:10px;background:white;color:#333;position:relative;box-sizing:border-box;font-family:Arial, sans-serif;overflow:visible;';
       const tipo = (detail.tipo || '').toLowerCase();
       if (tipo === 'cctv') {
         container.innerHTML = buildCCTVPDFContent(detail, empresa);
@@ -351,16 +351,60 @@
       container.style.top = '0';
       document.body.appendChild(container);
       await new Promise(r => setTimeout(r, 200));
-      const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true, allowTaint: false, logging: false, width: 1200, height: 1600, removeContainer: true });
+
+      // Medir tamaño real del contenido, incluyendo elementos absolutos
+      const computeRealSize = (root) => {
+        try {
+          let maxRight = root.clientWidth;
+          let maxBottom = root.clientHeight;
+          const rootRect = root.getBoundingClientRect();
+          root.querySelectorAll('*').forEach(el => {
+            const cs = getComputedStyle(el);
+            if (cs.position === 'absolute' || cs.position === 'fixed') {
+              const rect = el.getBoundingClientRect();
+              const right = rect.right - rootRect.left;
+              const bottom = rect.bottom - rootRect.top;
+              if (right > maxRight) maxRight = right;
+              if (bottom > maxBottom) maxBottom = bottom;
+            }
+          });
+          maxRight = Math.max(maxRight, root.scrollWidth);
+          maxBottom = Math.max(maxBottom, root.scrollHeight);
+          return { w: Math.ceil(maxRight), h: Math.ceil(maxBottom) };
+        } catch (_) {
+          return { w: Math.ceil(root.scrollWidth || root.clientWidth || 1200), h: Math.ceil(root.scrollHeight || root.clientHeight || 1600) };
+        }
+      };
+      const { w: realW, h: realH } = computeRealSize(container);
+      // Asegurar que el contenedor tenga la altura real medida para que html2canvas no recorte
+      container.style.height = `${realH}px`;
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        scrollY: 0,
+        removeContainer: true
+      });
       document.body.removeChild(container);
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
       const pdfWidth = 210, pdfHeight = 297, margin = 10;
-      const imgW = pdfWidth - margin * 2;
-      const imgH = imgW * (canvas.height / canvas.width);
-      const x = margin, y = (pdfHeight - imgH) / 2;
+      const safetyTop = 1.5, safetyBottom = 4; // volvemos al valor original con footer relativo
+      const maxW = pdfWidth - margin * 2;
+      const innerH = pdfWidth - margin * 2 - safetyTop - safetyBottom;
+      let imgW = maxW;
+      let imgH = imgW * (canvas.height / canvas.width);
+      if (imgH > innerH) {
+        imgH = innerH;
+        imgW = imgH / (canvas.height / canvas.width);
+      }
+      const x = (pdfWidth - imgW) / 2;
+      const y = margin + safetyTop;
       pdf.addImage(imgData, 'JPEG', x, y, imgW, imgH);
   const code = detail.numero_certificado || detail.codigo || 'certificado';
   pdf.save(`${code}.pdf`);

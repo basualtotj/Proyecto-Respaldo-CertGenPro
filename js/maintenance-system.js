@@ -78,107 +78,10 @@ class MaintenanceCertificateSystem {
      * Espera encontrar en localStorage la clave 'cert_to_download' con detalle del certificado
      */
     async processIncomingDownloadRequest() {
-        try {
-            if (location.hash !== '#download') return;
-            const raw = window.localStorage.getItem('cert_to_download');
-            if (!raw) return;
-            const detail = JSON.parse(raw);
-
-            // Quitar hash para evitar repetición si algo falla más adelante
-            history.replaceState(null, '', location.pathname + location.search);
-
-            // Mapear datos: tipo, selecciones, equipos, checklist, firmas si vinieran
-            const tipo = (detail.tipo || '').toLowerCase();
-            if (!tipo) return;
-
-            // Seleccionar tipo visualmente y mostrar formulario
-            const btn = document.querySelector(`.certificate-type-btn[data-type="${tipo}"]`);
-            if (btn) {
-                this.selectCertificateType({ preventDefault: () => {}, currentTarget: btn });
-            } else {
-                this.currentCertificateType = tipo;
-                this.showForm();
-                this.showSpecificForm();
-                this.updateFormTitle();
-            }
-
-            // Asegurar que combos estén renderizados
-            await this.delay(100);
-
-            // Setear cliente/instalación/técnico si hay IDs en el detalle
-            const setSelectValue = async (id, value) => {
-                const el = document.getElementById(id);
-                if (!el || !value) return;
-                el.value = String(value);
-                el.dispatchEvent(new Event('change'));
-                // Si es cliente, esperar carga de instalaciones
-                if (id === 'clienteSelect') await this.delay(150);
-            };
-
-            await setSelectValue('clienteSelect', detail.cliente_id || detail.cliente?.id);
-            await setSelectValue('instalacionSelect', detail.instalacion_id || detail.instalacion?.id);
-            await setSelectValue('tecnicoSelect', detail.tecnico_id || detail.tecnico?.id);
-
-            // Fecha
-            const fechaInput = document.getElementById('fechaMantenimiento');
-            if (fechaInput && detail.fecha_mantenimiento) {
-                fechaInput.value = detail.fecha_mantenimiento.substring(0, 10);
-            }
-
-            // Texto largo
-            if (detail.solicitudes_cliente) {
-                const el = document.getElementById('solicitudesCliente');
-                if (el) el.value = detail.solicitudes_cliente;
-            }
-            if (detail.observaciones) {
-                const el = document.getElementById('observaciones');
-                if (el) el.value = detail.observaciones;
-            }
-
-            // Equipos/checklist (guardados dentro de checklist_data)
-            const equipos = detail.checklist_data?.equipos || detail.equipos || {};
-            const setVal = (id, val) => { const el = document.getElementById(id); if (el && (val !== undefined && val !== null)) el.value = String(val); };
-            if (tipo === 'cctv') {
-                setVal('camarasIP', equipos.camaras_ip ?? 0);
-                setVal('camarasAnalogicas', equipos.camaras_analogicas ?? 0);
-                setVal('monitores', equipos.monitores ?? 0);
-                setVal('nvr', equipos.nvr ?? '');
-                setVal('dvr', equipos.dvr ?? '');
-                setVal('joystick', equipos.joystick ?? '');
-                // Checklist
-                const checklist = detail.checklist_data?.checklist || detail.cctv?.checklist || [];
-                const checks = new Set(Array.isArray(checklist) ? checklist : []);
-                document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => {
-                    cb.checked = checks.has(cb.value);
-                });
-            }
-
-            // Firmas (si el backend guarda las imágenes, restáuralas)
-            const firmas = detail.firmas || {};
-            if (firmas.tecnico) this.signatures.tecnico = firmas.tecnico;
-            if (firmas.cliente) this.signatures.cliente = firmas.cliente;
-
-            // Asignar número de certificado ya existente para que aparezca en el PDF
-            this.assignedCertificateNumber = detail.numero_certificado || detail.codigo || this.generateCertificateNumber();
-
-            // Evidencias fotográficas si están almacenadas
-            if (Array.isArray(detail.evidencias) && detail.evidencias.length) {
-                this.evidencias = detail.evidencias.map(e => ({ src: e.src, orientation: e.orientation, w: e.w, h: e.h }));
-            }
-
-            // Actualizar vista previa interna (si existiera) y generar PDF
-            this.updatePreview();
-            await this.delay(200);
-            await this.generatePDF();
-
-            // Limpieza
-            window.localStorage.removeItem('cert_to_download');
-        } catch (err) {
-            console.warn('No se pudo procesar descarga automática:', err?.message || err);
-            // En caso de fallo, limpiar hash y storage para no bloquear UI
-            history.replaceState(null, '', location.pathname + location.search);
-            window.localStorage.removeItem('cert_to_download');
-        }
+    // PDF deshabilitado: no hacer nada, limpiar señales si existieran
+    try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+    try { window.localStorage.removeItem('cert_to_download'); } catch {}
+    return;
     }
 
     /**
@@ -1358,49 +1261,72 @@ class MaintenanceCertificateSystem {
      * Manejar envío del formulario
      */
     async handleFormSubmit(e) {
-        e.preventDefault();
-        
-        if (!this.validateForm()) {
+    e.preventDefault();
+    try {
+        // Validación básica
+        if (!this.validateForm()) return;
+
+        // Construir payload y crear certificado en backend (asigna correlativo e ID)
+        const payload = this.buildCertificatePayload();
+        const created = await this.dataService.saveCertificate(payload);
+        if (!created || !created.id || !created.numero_certificado) {
+            this.showError('No se pudo crear el certificado en el servidor');
             return;
         }
-        // Guardar primero en backend para obtener correlativo asignado
-        try {
-            const payload = this.buildCertificatePayload();
-            const saved = await this.dataService.saveCertificate(payload);
-            this.assignedCertificateNumber = saved?.numero_certificado || this.generateCertificateNumber();
-            this.assignedCertificateId = saved?.id || saved?.data?.id || null;
-            // Cache local del último certificado por tipo/cliente/instalación
+        this.assignedCertificateId = created.id;
+        this.assignedCertificateNumber = created.numero_certificado;
+
+        // Generar PDF vectorial (solo CCTV por ahora)
+        if (this.currentCertificateType === 'cctv') {
+            const generator = new (window.CCTVPdfGenerator)();
+            const formData = this.getFormData();
+            const info = this.getClienteInstalacionInfo();
+            const evidencias = Array.isArray(formData.evidencias) ? formData.evidencias : [];
+            const { blob, filename } = await generator.generate({
+                formData,
+                info,
+                empresa: this.empresa,
+                code: this.assignedCertificateNumber,
+                evidencias,
+                autoSave: false
+            });
+
+            // Subir PDF al backend
             try {
-                const key = this.makeLastCacheKey(payload.tipo, payload.cliente_id, payload.instalacion_id);
-                const cacheObj = {
-                    tipo: payload.tipo,
-                    cliente_id: payload.cliente_id,
-                    instalacion_id: payload.instalacion_id,
-                    tecnico_id: payload.tecnico_id,
-                    fecha_mantenimiento: payload.fecha_mantenimiento,
-                    solicitudes_cliente: payload.solicitudes_cliente,
-                    observaciones_generales: payload.observaciones_generales || payload.observaciones || '',
-                    checklist_data: typeof payload.checklist_data === 'object' ? payload.checklist_data : null,
-                    numero_certificado: this.assignedCertificateNumber,
-                    id: this.assignedCertificateId
-                };
-                localStorage.setItem(key, JSON.stringify(cacheObj));
+                await fetch(`${this.dataService.apiUrl}/certificados/${this.assignedCertificateId}/pdf`, {
+                    method: 'POST',
+                    // Enviar blob directo; backend acepta cuerpo crudo
+                    body: blob
+                });
+            } catch (e) {
+                console.warn('No se pudo subir el PDF al backend:', e?.message || e);
+            }
+
+            // Descargar localmente
+            try {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 4000);
             } catch {}
-            // Señal para otras pestañas (certificados.html) para refrescar listado
-            try { localStorage.setItem('cert_created', String(Date.now())); } catch {}
-        } catch (err) {
-            console.warn('Fallo al guardar antes del PDF, usando número local:', err?.message || err);
-            this.assignedCertificateNumber = this.generateCertificateNumber();
-            this.assignedCertificateId = null;
-            this.showError('No se pudo guardar en la base de datos. Se generará el PDF sin registro.');
+        } else {
+            this.showError('Generador PDF vectorial activo solo para CCTV en esta versión');
         }
 
-        await this.generatePDF();
-
-        // Limpiar formulario para crear uno nuevo del mismo tipo
+        // Guardar en caché como último certificado para esta instalación
         try {
-            this.resetFormKeepType();
-        } catch (_) {}
+            const key = this.makeLastCacheKey(this.currentCertificateType || '', Number(payload.cliente_id), Number(payload.instalacion_id));
+            localStorage.setItem(key, JSON.stringify(created));
+        } catch {}
+
+        // Reset suave del formulario
+        this.showSuccess(`Certificado ${this.assignedCertificateNumber} generado`);
+        this.resetFormKeepType();
+    } catch (err) {
+        console.error('Error al generar certificado:', err);
+        this.showError('Error al generar certificado. Inténtelo nuevamente.');
+    }
     }
 
     makeLastCacheKey(tipo, clienteId, instalacionId) {
@@ -1440,91 +1366,14 @@ class MaintenanceCertificateSystem {
      * Generar PDF del certificado
      */
     async generatePDF() {
-        const generateBtn = document.getElementById('generateBtn');
-        const originalText = generateBtn?.innerHTML;
-        
-        try {
-            if (generateBtn) {
-                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generando PDF...';
-                generateBtn.disabled = true;
-            }
-
-            // Obtener datos actuales
-            const formData = this.getFormData();
-            const info = this.getClienteInstalacionInfo();
-
-            // Esperar renderizado
-            await this.delay(1000);
-
-            // Crear elemento PDF
-            const pdfElement = this.createPDFElement(formData, info);
-            
-            // Agregar al DOM temporalmente
-            pdfElement.style.position = 'absolute';
-            pdfElement.style.left = '-9999px';
-            pdfElement.style.top = '0';
-            pdfElement.style.zIndex = '-1';
-            document.body.appendChild(pdfElement);
-
-            await this.delay(500);
-
-            // Capturar con html2canvas
-            const canvas = await html2canvas(pdfElement, {
-                scale: 2,
-                backgroundColor: '#ffffff',
-                useCORS: true,
-                allowTaint: false,
-                logging: false,
-                width: 1200,
-                height: 1600,
-                removeContainer: true
-            });
-
-            document.body.removeChild(pdfElement);
-
-            // Crear PDF
-            await this.createPDFFromCanvas(canvas, formData, info);
-            // El contador ya está manejado en el backend al crear el certificado
-            
-            this.showSuccess('¡Certificado generado exitosamente!');
-
-        } catch (error) {
-            console.error('Error generando PDF:', error);
-            this.showError(`Error al generar PDF: ${error.message}`);
-        } finally {
-            if (generateBtn && originalText) {
-                setTimeout(() => {
-                    generateBtn.innerHTML = originalText;
-                    generateBtn.disabled = false;
-                }, 500);
-            }
-        }
+    // PDF deshabilitado: no hacer nada
+    return;
     }
 
     /**
      * Crear elemento HTML para PDF
      */
-    createPDFElement(formData, info) {
-        const element = document.createElement('div');
-        element.style.cssText = `
-            width: 1200px;
-            height: 1600px;
-            padding: 60px;
-            background: white;
-            font-family: 'Arial', sans-serif;
-            color: #333;
-            position: relative;
-            box-sizing: border-box;
-        `;
-
-        if (this.currentCertificateType === 'cctv') {
-            element.innerHTML = this.generateCCTVPDFContent(formData, info);
-        } else {
-            element.innerHTML = this.generateGenericPDFContent(formData, info);
-        }
-
-        return element;
-    }
+    // createPDFElement eliminado (PDF deshabilitado)
 
     /**
      * Construir payload para el backend
@@ -1575,6 +1424,7 @@ class MaintenanceCertificateSystem {
         : '';
 
     return `
+            <div style="font-family: Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #111827; display: flow-root; min-height: 100%;">
             <!-- Header con barra azul lateral -->
             <div style="text-align: center; border-bottom: 3px solid #1e40af; padding-bottom: 20px; margin-bottom: 30px; position: relative;">
                 <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: linear-gradient(to bottom, #1e40af, #3b82f6); border-radius: 3px;"></div>
@@ -1596,7 +1446,7 @@ class MaintenanceCertificateSystem {
                     </div>
                     <div style="font-weight: 600; color: #1e40af; text-align: right;">
                         <span style="display: block; font-size: 14px; color: #6b7280;">Certificado N°:</span>
-                        <span style="font-size: 18px, color: #1e40af;">${codigo}</span>
+                        <span style="font-size: 18px; color: #1e40af;">${codigo}</span>
                     </div>
                 </div>
             </div>
@@ -1681,8 +1531,8 @@ class MaintenanceCertificateSystem {
 
             ${''}
 
-            <!-- Firmas -->
-            <div style="position: absolute; bottom: 110px; left: 60px; right: 60px;">
+            <!-- Firmas - OPCIÓN C: Sin position absolute, siguen el flujo -->
+            <div id="pdf-signatures" style="margin-bottom: 30px; padding: 0 60px;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px;">
                     <div style="text-align: center;">
                         <div style="height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
@@ -1705,13 +1555,14 @@ class MaintenanceCertificateSystem {
                 </div>
             </div>
 
-            <!-- Código y Fecha -->
-            <div style="position: absolute; bottom: 20px; left: 60px; right: 60px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 10px;">
+            <!-- Código y Fecha - OPCIÓN C: Footer relativo (no absolute) -->
+            <div id="pdf-footer" style="text-align: center; font-size: 13px; color: #374151; border-top: 1px solid #e5e7eb; padding: 16px 60px 22px 60px; margin-bottom: 0;">
                 <strong>Código de Validación:</strong> ${codigo} | 
                 <strong>Generado el:</strong> ${new Date().toLocaleDateString('es-ES')}
-                <div style="margin-top: 6px; font-size: 12px; color: #475569; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div style="margin-top: 6px; font-size: 13px; color: #1f2937; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     🏢 Redes y CCTV &nbsp;•&nbsp; 📍 María Eugenia López 9726, Antofagasta &nbsp;•&nbsp; 🌐 www.redesycctv.cl &nbsp;•&nbsp; ☎ +56 9 630 671 69
                 </div>
+            </div>
             </div>
         `;
     }
@@ -1767,34 +1618,35 @@ class MaintenanceCertificateSystem {
             unit: 'mm',
             format: 'a4'
         });
+        pdf.setFont('helvetica', 'normal');
 
-        const pdfWidth = 210;
-        const pdfHeight = 297;
-        const margin = 10;
+    const pdfWidth = 210;
+    const pdfHeight = 297;
+    const margin = 10; // 10 mm por lado
         
         const maxWidth = pdfWidth - (margin * 2);
-        const maxHeight = pdfHeight - (margin * 2);
+    const safetyTop = 2; // pequeño respiro
+    const safetyBottom = 6; // evitar corte en impresoras
+        const innerHeight = pdfHeight - (margin * 2) - safetyTop - safetyBottom;
         
         const canvasRatio = canvas.height / canvas.width;
         let imgWidth = maxWidth;
         let imgHeight = imgWidth * canvasRatio;
         
-        if (imgHeight > maxHeight) {
-            imgHeight = maxHeight;
+        if (imgHeight > innerHeight) {
+            imgHeight = innerHeight;
             imgWidth = imgHeight / canvasRatio;
         }
         
         const x = (pdfWidth - imgWidth) / 2;
-        const y = (pdfHeight - imgHeight) / 2;
+        const y = margin + safetyTop;
 
-    // Comprimir la imagen principal para reducir el peso del PDF
-    const imgData = canvas.toDataURL('image/jpeg', 0.82);
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
         pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
 
-        // Anexo - Evidencia Fotográfica: repetir encabezado (título, sistema, fecha, código) y pie de validación
+        // Anexo - Evidencia Fotográfica
         const evidencias = Array.isArray(formData.evidencias) ? formData.evidencias : [];
         if (evidencias.length > 0) {
-            // Definir layout: 3 columnas x 3 filas por página (máx 9 por página)
             const perPage = 9;
             const code = this.assignedCertificateNumber || this.generateCertificateNumber();
             const fechaText = formData.fecha_mantenimiento ? new Date(formData.fecha_mantenimiento).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
@@ -1809,13 +1661,14 @@ class MaintenanceCertificateSystem {
             // Empezar desde el índice 0 (todas van a anexos)
             for (let i = 0; i < evidencias.length; i += perPage) {
                 pdf.addPage('a4', 'portrait');
-                // Encabezado estilo hoja 1
-                // Título (mismo tamaño de hoja 1)
-                pdf.setFontSize(16);
+        // Encabezado estilo hoja 1 (mismos tamaños que hoja 1)
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
                 pdf.setTextColor(30, 64, 175); // azul
                 pdf.text('CERTIFICADO DE MANTENIMIENTO', pdfWidth / 2, margin + 8, { align: 'center' });
                 // Subtítulo (sistema)
-                pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
                 pdf.setTextColor(55, 65, 81); // gris oscuro
                 pdf.text(systemLabel, pdfWidth / 2, margin + 14, { align: 'center' });
                 // Línea divisoria
@@ -1824,7 +1677,8 @@ class MaintenanceCertificateSystem {
                 // Barra vertical izquierda (estilo)
                 pdf.setDrawColor(30, 64, 175);
                 pdf.setFillColor(30, 64, 175);
-        pdf.rect(margin - 1.2, margin + 2, 2.4, 16, 'F');
+    // Alinear la barra con la línea inferior del encabezado
+    pdf.rect(margin - 0.8, margin + 2, 2.0, 14, 'F');
                 // Logo empresa (si está disponible como data URL)
                 try {
                     if (logoDataUrl) {
@@ -1843,7 +1697,7 @@ class MaintenanceCertificateSystem {
                     }
                 } catch (_) {}
                 // Banda de fecha y código (rectángulo azul claro con textos)
-        const bandY = margin + 18;
+    const bandY = margin + 18;
         const bandH = 10;
                 pdf.setFillColor(219, 234, 254); // azul claro
                 pdf.setDrawColor(226, 232, 240); // borde sutil
@@ -1860,15 +1714,21 @@ class MaintenanceCertificateSystem {
                 const rightTextWidth = pdf.getTextWidth(rightLabel);
                 const rightValWidth = pdf.getTextWidth(code);
                 const totalRight = rightTextWidth + 2 + rightValWidth;
-                const rightStart = pdfWidth - margin - 2 - totalRight; // pequeño margen interno extra
+                const rightStart = pdfWidth - margin - 4 - totalRight; // +2mm de respiro a la derecha
                 pdf.text(rightLabel, rightStart, bandY + 8);
                 pdf.setTextColor(30, 64, 175);
                 pdf.text(code, rightStart + rightTextWidth + 2, bandY + 8);
 
                 const gridX = margin;
-        const headerH = 33; // espacio ocupado por encabezado + banda
+    const headerH = 33; // espacio ocupado por encabezado + banda
                 const footerH = 14; // espacio reservado para pie
-                const gridY = margin + headerH;
+        const gridY = margin + headerH + 8; // mayor respiro bajo la banda
+                // Título de la sección de evidencias
+                pdf.setTextColor(55, 65, 81);
+                pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        pdf.text('Evidencia fotográfica', gridX, gridY - 5);
+                pdf.setFont('helvetica', 'normal');
                 const gridW = pdfWidth - margin * 2;
                 const cols = 3;
                 const rows = 3;
@@ -1950,14 +1810,14 @@ class MaintenanceCertificateSystem {
 
                 // Pie con código de validación (mismo concepto que hoja 1)
                 pdf.setDrawColor(229, 231, 235);
-                const footerY = pdfHeight - margin - 6;
+                const footerY = pdfHeight - margin - 8; // subir ligeramente para evitar recortes en impresoras
                 pdf.line(margin, footerY, pdfWidth - margin, footerY);
-                pdf.setFontSize(9);
-                pdf.setTextColor(107, 114, 128);
+                pdf.setFontSize(8);
+                pdf.setTextColor(75, 85, 99);
                 pdf.text(`Código de Validación: ${code} | Generado el: ${todayText} | Puede validar este certificado usando este código`, pdfWidth / 2, footerY + 5, { align: 'center' });
                 // Línea de contacto debajo del código
-                pdf.setFontSize(9);
-                pdf.setTextColor(100, 116, 139);
+                pdf.setFontSize(8);
+                pdf.setTextColor(51, 65, 85);
                 pdf.text('Redes y CCTV  •  María Eugenia López 9726, Antofagasta  •  www.redesycctv.cl  •  +56 9 630 671 69', pdfWidth / 2, footerY + 10, { align: 'center' });
             }
         }
@@ -1988,6 +1848,233 @@ class MaintenanceCertificateSystem {
         }
 
     // No bloquear: la limpieza ya fue gatillada post-generatePDF
+    }
+
+    /**
+     * Crear PDF vectorial (Hoja 1) y anexos fotográficos (reutiliza lógica de anexos)
+     */
+    async createPDFVector(formData, info) {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pdfWidth = 210, pdfHeight = 297, margin = 10;
+        pdf.setFont('helvetica', 'normal');
+
+        const code = this.assignedCertificateNumber || this.generateCertificateNumber();
+        const fechaText = formData.fecha_mantenimiento ? new Date(formData.fecha_mantenimiento).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+        const systemLabel = (this.currentCertificateType || '').toLowerCase() === 'cctv' ? 'SISTEMA CCTV' : (this.currentCertificateType ? `SISTEMA ${this.currentCertificateType.toUpperCase()}` : 'SISTEMA');
+
+        // Header
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
+        pdf.setTextColor(30, 64, 175);
+        pdf.text('CERTIFICADO DE MANTENIMIENTO', pdfWidth / 2, margin + 8, { align: 'center' });
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(55, 65, 81);
+        pdf.text(systemLabel, pdfWidth / 2, margin + 14, { align: 'center' });
+        pdf.setDrawColor(30, 64, 175);
+        pdf.line(margin, margin + 16, pdfWidth - margin, margin + 16);
+        pdf.setFillColor(30, 64, 175);
+        pdf.rect(margin - 0.8, margin + 2, 2.0, 14, 'F');
+
+        // Logo
+        try {
+            const logoDataUrl = await this.getEmpresaLogoDataUrl();
+            if (logoDataUrl) {
+                const dims = await this.getImageDimensions(logoDataUrl).catch(() => null);
+                const targetH = 10;
+                let logoW = 24, logoH = targetH;
+                if (dims && dims.w && dims.h) { const ratio = dims.w / dims.h; logoW = Math.min(28, Math.max(16, targetH * ratio)); }
+                const logoX = pdfWidth - margin - logoW;
+                const logoY = margin + 2;
+                const fmt = logoDataUrl.includes('png') ? 'PNG' : 'JPEG';
+                pdf.addImage(logoDataUrl, fmt, logoX, logoY, logoW, logoH, undefined, 'FAST');
+            }
+        } catch {}
+
+        // Banda fecha/código
+        const bandY = margin + 18, bandH = 10;
+        pdf.setFillColor(219, 234, 254);
+        pdf.setDrawColor(226, 232, 240);
+        pdf.rect(margin, bandY, pdfWidth - margin * 2, bandH, 'FD');
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text('Fecha:', margin + 4, bandY + 8);
+        pdf.setTextColor(30, 64, 175);
+        pdf.text(fechaText, margin + 24, bandY + 8);
+        pdf.setTextColor(100, 116, 139);
+        const rightLabel = 'Certificado N°:';
+        const rightTextWidth = pdf.getTextWidth(rightLabel);
+        const rightValWidth = pdf.getTextWidth(code);
+        const totalRight = rightTextWidth + 2 + rightValWidth;
+        const rightStart = pdfWidth - margin - 4 - totalRight;
+        pdf.text(rightLabel, rightStart, bandY + 8);
+        pdf.setTextColor(30, 64, 175);
+        pdf.text(code, rightStart + rightTextWidth + 2, bandY + 8);
+
+        // Secciones vectoriales
+        const col = { blue: [30,64,175], gray: [55,65,81], light: [226,232,240] };
+        let y = bandY + bandH + 10;
+        const sectionTitle = (t) => {
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12); pdf.setTextColor(...col.blue); pdf.text(t, margin + 4, y);
+            y += 6; pdf.setDrawColor(...col.blue); pdf.setLineWidth(0.5); pdf.line(margin, y, pdfWidth - margin, y); y += 6;
+        };
+        const textRow = (label, value) => {
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(...col.gray);
+            pdf.text(`${label}:`, margin + 4, y);
+            pdf.setTextColor(17,24,39);
+            const maxW = (pdfWidth - margin*2) - 40; pdf.text(String(value || '-'), margin + 30, y, { maxWidth: maxW });
+            y += 6;
+        };
+
+        // Información del cliente
+        sectionTitle('INFORMACIÓN DEL CLIENTE');
+        textRow('Cliente', info.cliente.nombre);
+        textRow('RUT', info.cliente.rut);
+        textRow('Técnico', info.tecnico.nombre);
+        textRow('Contacto', info.cliente.contacto);
+        textRow('Email', info.cliente.email);
+        textRow('Dirección', info.instalacion.direccion);
+        y += 4;
+
+        // Equipos Instalados (tres tarjetas)
+        sectionTitle('EQUIPOS INSTALADOS');
+        const cardW = (pdfWidth - margin*2 - 20) / 3; const cardH = 24; const startX = margin; const cardY = y;
+        const card = (x, label, value) => {
+            pdf.setDrawColor(...col.light); pdf.setFillColor(248,250,252); pdf.rect(x, cardY, cardW, cardH, 'FD');
+            pdf.setFont('helvetica', 'bold'); pdf.setTextColor(71,85,105); pdf.setFontSize(10); pdf.text(label, x + 4, cardY + 8);
+            pdf.setTextColor(30,64,175); pdf.setFontSize(16); pdf.text(String(value||0), x + 4, cardY + 18);
+        };
+        card(startX, 'Cámaras IP', formData.cctv?.camaras_ip);
+        card(startX + cardW + 10, 'Cámaras Analógicas', formData.cctv?.camaras_analogicas);
+        card(startX + (cardW + 10) * 2, 'Monitores', formData.cctv?.monitores);
+        y = cardY + cardH + 10;
+
+        // Verificación realizada (checklist en columnas)
+        sectionTitle('VERIFICACIÓN REALIZADA');
+        const checklist = Array.isArray(formData.cctv?.checklist) ? formData.cctv.checklist : [];
+        const labels = { grabaciones:'Grabaciones', limpieza_camaras:'Limpieza de cámaras', fecha_hora:'Fecha y hora', enfoques:'Enfoques', configuraciones:'Configuraciones', filtros:'Filtros', revision_cables:'Revisión de cables y conectores', revision_almacenamiento:'Revisión de almacenamiento' };
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(17,24,39); pdf.setFontSize(10);
+        const colW = (pdfWidth - margin*2) / 3; const checklistRows = Math.ceil(checklist.length / 3);
+        for (let r = 0; r < checklistRows; r++) {
+            for (let c = 0; c < 3; c++) {
+                const idx = r + c*checklistRows; const item = checklist[idx]; if (!item) continue;
+                const tx = margin + c*colW; pdf.text(`✓ ${labels[item] || item}`, tx, y);
+            }
+            y += 6;
+        }
+        y += 6;
+
+        // Solicitudes del cliente
+        if (formData.solicitudes_cliente && formData.solicitudes_cliente.trim()) {
+            sectionTitle('SOLICITUDES DEL CLIENTE');
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(17,24,39);
+            pdf.text(formData.solicitudes_cliente, margin + 4, y, { maxWidth: pdfWidth - margin*2 - 8 }); y += 12;
+        }
+
+        // Observaciones
+        if (formData.observaciones && formData.observaciones.trim()) {
+            sectionTitle('OBSERVACIONES Y RECOMENDACIONES');
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(17,24,39);
+            pdf.text(formData.observaciones, margin + 4, y, { maxWidth: pdfWidth - margin*2 - 8 }); y += 12;
+        }
+
+        // Firmas
+        const signaturesY = pdfHeight - 72; const sigW = (pdfWidth - margin*2 - 20)/2;
+        const sig1X = margin, sig2X = margin + sigW + 20;
+        pdf.setDrawColor(55,65,81); pdf.setLineWidth(0.6);
+        // Líneas de firmas
+        pdf.line(sig1X, signaturesY + 22, sig1X + sigW, signaturesY + 22);
+        pdf.line(sig2X, signaturesY + 22, sig2X + sigW, signaturesY + 22);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(55,65,81);
+        pdf.text('Técnico Responsable', sig1X, signaturesY + 28);
+        pdf.text('Representante Empresa', sig2X, signaturesY + 28);
+
+        // Pie de página
+        pdf.setDrawColor(229, 231, 235);
+        const footerY = pdfHeight - margin - 8;
+        pdf.line(margin, footerY, pdfWidth - margin, footerY);
+        pdf.setFontSize(8);
+        pdf.setTextColor(75, 85, 99);
+        const todayText = new Date().toLocaleDateString('es-ES');
+        pdf.text(`Código de Validación: ${code} | Generado el: ${todayText} | Puede validar este certificado usando este código`, pdfWidth / 2, footerY + 5, { align: 'center' });
+        pdf.setTextColor(51, 65, 85);
+        pdf.text('Redes y CCTV  •  María Eugenia López 9726, Antofagasta  •  www.redesycctv.cl  •  +56 9 630 671 69', pdfWidth / 2, footerY + 10, { align: 'center' });
+
+        // Anexos fotográficos
+        const evidencias = Array.isArray(formData.evidencias) ? formData.evidencias : [];
+        if (evidencias.length > 0) {
+            const perPage = 9; // 3x3
+            // Preparar logo empresa para encabezado
+            const logoDataUrl = await this.getEmpresaLogoDataUrl().catch(() => null);
+            let logoDims = null;
+            if (logoDataUrl) { try { logoDims = await this.getImageDimensions(logoDataUrl); } catch(_) { logoDims = null; } }
+            for (let i = 0; i < evidencias.length; i += perPage) {
+                pdf.addPage('a4', 'portrait');
+                // Encabezado
+                pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(30,64,175);
+                pdf.text('CERTIFICADO DE MANTENIMIENTO', pdfWidth/2, margin + 8, { align: 'center' });
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(55,65,81);
+                pdf.text(systemLabel, pdfWidth/2, margin + 14, { align: 'center' });
+                pdf.setDrawColor(30,64,175); pdf.line(margin, margin + 16, pdfWidth - margin, margin + 16);
+                pdf.setFillColor(30,64,175); pdf.rect(margin - 0.8, margin + 2, 2.0, 14, 'F');
+                try {
+                    if (logoDataUrl) {
+                        const targetH = 8; let logoW = 22, logoH = targetH;
+                        if (logoDims && logoDims.w && logoDims.h) { const ratio = logoDims.w / logoDims.h; logoW = Math.min(26, Math.max(16, targetH * ratio)); }
+                        const logoX = pdfWidth - margin - logoW; const logoY = margin + 2; const fmt = logoDataUrl.includes('png') ? 'PNG' : 'JPEG';
+                        pdf.addImage(logoDataUrl, fmt, logoX, logoY, logoW, logoH, undefined, 'FAST');
+                    }
+                } catch {}
+                const bandY2 = margin + 18; const bandH2 = 10;
+                pdf.setFillColor(219,234,254); pdf.setDrawColor(226,232,240); pdf.rect(margin, bandY2, pdfWidth - margin*2, bandH2, 'FD');
+                pdf.setFontSize(10); pdf.setTextColor(100,116,139); pdf.text('Fecha:', margin + 4, bandY2 + 8);
+                pdf.setTextColor(30,64,175); pdf.text(fechaText, margin + 24, bandY2 + 8);
+                pdf.setTextColor(100,116,139);
+                const rl = 'Certificado N°:'; const rlW = pdf.getTextWidth(rl); const rvW = pdf.getTextWidth(code);
+                const tr = rlW + 2 + rvW; const rs = pdfWidth - margin - 4 - tr; pdf.text(rl, rs, bandY2 + 8);
+                pdf.setTextColor(30,64,175); pdf.text(code, rs + rlW + 2, bandY2 + 8);
+
+                const gridX = margin; const headerH = 33; const footerH = 14; const gridY = margin + headerH + 8;
+                const gridW = pdfWidth - margin*2; const gridCols = 3; const gridRows = 3;
+                const hGap = 6; const vGap = 8; const cellW = (gridW - hGap * (gridCols - 1)) / gridCols;
+                const availableH = pdfHeight - gridY - margin - footerH - (vGap * (gridRows - 1));
+                const cellH = availableH / gridRows;
+
+                pdf.setTextColor(55,65,81); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11);
+                pdf.text('Evidencia fotográfica', gridX, gridY - 5); pdf.setFont('helvetica', 'normal');
+
+                const slice = evidencias.slice(i, i + perPage);
+                slice.forEach((evd, idx) => {
+                    const r = Math.floor(idx / gridCols); const c = idx % gridCols;
+                    const cx = gridX + c * (cellW + hGap); const cy = gridY + r * (cellH + vGap);
+                    const w = evd.w || 1000, h = evd.h || 1000, ratio = w / h;
+                    let drawW = cellW, drawH = drawW / ratio; if (drawH > cellH) { drawH = cellH; drawW = drawH * ratio; }
+                    const ox = cx + (cellW - drawW) / 2, oy = cy + (cellH - drawH) / 2;
+                    pdf.setDrawColor(215,219,223); pdf.setFillColor(255,255,255); pdf.rect(cx, cy, cellW, cellH, 'S');
+                    try { pdf.addImage(evd.src, 'JPEG', ox, oy, drawW, drawH, undefined, 'FAST'); } catch {}
+                });
+
+                const fY = pdfHeight - margin - 8; pdf.setDrawColor(229,231,235); pdf.line(margin, fY, pdfWidth - margin, fY);
+                pdf.setFontSize(8); pdf.setTextColor(75,85,99);
+                const today = new Date().toLocaleDateString('es-ES');
+                pdf.text(`Código de Validación: ${code} | Generado el: ${today} | Puede validar este certificado usando este código`, pdfWidth/2, fY + 5, { align: 'center' });
+                pdf.setFontSize(8); pdf.setTextColor(51,65,85);
+                pdf.text('Redes y CCTV  •  María Eugenia López 9726, Antofagasta  •  www.redesycctv.cl  •  +56 9 630 671 69', pdfWidth/2, fY + 10, { align: 'center' });
+            }
+        }
+
+        const fileName = this.generateFileName(formData, info);
+        pdf.save(fileName);
+
+        // Subir copia al backend si hay ID
+        try {
+            const certId = this.assignedCertificateId || formData?.id || null;
+            if (certId) {
+                const blob = pdf.output('blob');
+                void fetch(`${this.dataService.apiUrl}/certificados/${certId}/pdf`, { method: 'POST', body: blob });
+            }
+        } catch {}
     }
 
     /**
@@ -2106,6 +2193,68 @@ class MaintenanceCertificateSystem {
      */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Asegura espacio suficiente para el pie dentro del elemento raíz del PDF.
+     * - Mide el footer por id 'pdf-footer'.
+     * - Calcula padding-bottom mínimo: max(300px, footer.offsetHeight + 40px).
+     * - Aplica padding-bottom sin alterar el resto del layout.
+     */
+    __adjustFooterPadding(root) {
+        try {
+            if (!root || !root.style) return;
+            const footer = root.querySelector('#pdf-footer');
+            if (!footer) return;
+            // Forzar un reflow rápido antes de medir
+            // eslint-disable-next-line no-unused-expressions
+            footer.offsetHeight;
+            const footerH = footer.offsetHeight || 0;
+            const minPad = 300;
+            const desired = Math.max(minPad, footerH + 40);
+            // Aplicar solo si actual es menor
+            const currentPad = this.__parsePx(getComputedStyle(root).paddingBottom || '0');
+            if (currentPad < desired) {
+                const cs = getComputedStyle(root);
+                const padTop = cs.paddingTop || '10px';
+                const padRight = cs.paddingRight || '10px';
+                const padLeft = cs.paddingLeft || '10px';
+                root.style.padding = `${padTop} ${padRight} ${desired}px ${padLeft}`;
+            }
+        } catch (_) { /* silencioso */ }
+    }
+
+    __parsePx(v) {
+        if (typeof v !== 'string') return 0;
+        const n = parseFloat(v.replace('px', ''));
+        return isNaN(n) ? 0 : n;
+    }
+
+    /**
+     * Calcula el tamaño real del contenido considerando hijos con position:absolute
+     * Devolverá un ancho/alto que cubra el bounding rect máximo.
+     */
+    __computeRealSize(root) {
+        try {
+            const parentRect = root.getBoundingClientRect();
+            let maxRight = Math.max(root.clientWidth, root.offsetWidth, root.scrollWidth);
+            let maxBottom = Math.max(root.clientHeight, root.offsetHeight, root.scrollHeight);
+            const children = root.querySelectorAll('*');
+            children.forEach(el => {
+                const style = getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                const right = rect.right - parentRect.left;
+                const bottom = rect.bottom - parentRect.top;
+                // Incluir elementos fuera de flujo y también los relativos con transform
+                if (style.position === 'absolute' || style.position === 'fixed' || style.transform !== 'none') {
+                    if (right > maxRight) maxRight = right;
+                    if (bottom > maxBottom) maxBottom = bottom;
+                }
+            });
+            return { realWidth: Math.ceil(maxRight), realHeight: Math.ceil(maxBottom) };
+        } catch (_) {
+            return { realWidth: Math.ceil(root.scrollWidth || root.clientWidth || 1200), realHeight: Math.ceil(root.scrollHeight || root.clientHeight || 1600) };
+        }
     }
 
     /**
