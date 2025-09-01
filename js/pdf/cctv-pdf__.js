@@ -636,6 +636,7 @@
       const items = V.splice(0, take).map(ev => ({ ev, span: 1 }));
       return { kind: 'V_REMAINS', items, take };
     }
+    }
     if (Hh.length > 0) {
       const items = [{ ev: Hh.shift(), span: 4 }]; // 1H sola ocupa todo el ancho
       return { kind: '1H', items };

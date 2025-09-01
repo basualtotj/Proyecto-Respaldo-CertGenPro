@@ -4,6 +4,8 @@
 // Archivo principal que maneja todas las rutas
 // ============================================
 
+header('X-Index-Path: ' . __FILE__);
+error_log('[INDEX] Using ' . __FILE__);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -380,77 +382,59 @@ function getInstalaciones($params) {
 function createInstalacion($params) {
     try {
         $data = getJsonInput();
-        
+
+        // Validaciones básicas existentes
         $rules = [
-            'cliente_id' => ['required' => true],
-            'nombre' => ['required' => true, 'max_length' => 255],
-            'direccion' => ['required' => true, 'max_length' => 500],
+            'cliente_id'     => ['required' => true],
+            'nombre'         => ['required' => true, 'max_length' => 255],
+            'direccion'      => ['required' => true, 'max_length' => 500],
             'contacto_local' => ['max_length' => 255],
             'telefono_local' => ['max_length' => 20],
-            'tipo_sistema' => ['max_length' => 20]
+            'tipo_sistema'   => ['max_length' => 20],
         ];
-        
         $errors = Validator::validateInput($data, $rules);
         if (!empty($errors)) {
             ApiResponse::validation($errors);
         }
-        
-        // Verificar que el cliente existe
+
         $cliente = new Cliente();
         if (!$cliente->findById($data['cliente_id'])) {
             ApiResponse::error('El cliente especificado no existe', 400);
         }
-        
-        // Construir meta_equipos desde campos planos si vienen
+
         $equipKeys = ['camaras_ip','camaras_analogicas','nvr','dvr','monitores','joystick'];
         $meta = [];
         foreach ($equipKeys as $k) {
             if (isset($data[$k]) && $data[$k] !== '') {
                 $meta[$k] = $data[$k];
-                unset($data[$k]); // evitar columna desconocida
             }
-        }
-        if (isset($data['meta_equipos'])) {
-            // Permitir enviar meta_equipos como objeto/JSON string
-            if (is_array($data['meta_equipos'])) {
-                $meta = array_merge($meta, $data['meta_equipos']);
-            } elseif (is_string($data['meta_equipos'])) {
-                $decoded = json_decode($data['meta_equipos'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $meta = array_merge($meta, $decoded);
-                }
-            }
-            unset($data['meta_equipos']);
+            unset($data[$k]);
         }
 
-        // Si no hay datos de equipos, guardar como NULL o JSON vacío
-
-        if (!empty($meta)) {
-            $data['meta_equipos'] = json_encode($meta);
+        if (empty($meta)) {
+            $data['meta_equipos'] = null;
         } else {
-            $data['meta_equipos'] = null; // o json_encode([]) si prefieres JSON vacío
+            $data['meta_equipos'] = json_encode($meta, JSON_UNESCAPED_UNICODE);
         }
 
-        // Eliminar todos los campos planos de equipos para evitar error de columnas inexistentes
-        $equipKeys = ['camaras_ip','camaras_analogicas','nvr','dvr','monitores','joystick'];
-        foreach ($equipKeys as $k) {
-            if (isset($data[$k])) {
-                unset($data[$k]);
-            }
-        }
+        $data['activo'] = isset($data['activo']) ? (int)!!$data['activo'] : 1;
 
-        // Eliminar todos los campos planos de equipos para evitar error de columnas inexistentes
-        $equipKeys = ['camaras_ip','camaras_analogicas','nvr','dvr','monitores','joystick'];
-        foreach ($equipKeys as $k) {
-            if (isset($data[$k])) {
-                unset($data[$k]);
-            }
-        }
+        $allowed = [
+            'cliente_id','nombre','direccion',
+            'contacto_local','telefono_local',
+            'tipo_sistema','meta_equipos','activo'
+        ];
+        $data = array_intersect_key($data, array_flip($allowed));
 
         $instalacion = new Instalacion();
         $id = $instalacion->create($data);
         $newInstalacion = $instalacion->findById($id);
-        
+        if (isset($newInstalacion['meta_equipos']) && is_string($newInstalacion['meta_equipos'])) {
+            $decoded = json_decode($newInstalacion['meta_equipos'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $newInstalacion['meta_equipos'] = $decoded;
+            }
+        }
         ApiResponse::success($newInstalacion, 'Instalación creada correctamente', 201);
     } catch (Exception $e) {
         ApiResponse::error('Error al crear instalación: ' . $e->getMessage(), 500);
@@ -461,48 +445,68 @@ function updateInstalacion($params) {
     try {
         $id = $params['id'];
         $data = getJsonInput();
-        
+
         $instalacion = new Instalacion();
-        
         if (!$instalacion->findById($id)) {
             ApiResponse::notFound('Instalación');
         }
-        
-        // Verificar que el cliente existe si se está cambiando
+
         if (isset($data['cliente_id'])) {
             $cliente = new Cliente();
             if (!$cliente->findById($data['cliente_id'])) {
                 ApiResponse::error('El cliente especificado no existe', 400);
             }
         }
-        // Construir/actualizar meta_equipos desde campos planos
+
         $equipKeys = ['camaras_ip','camaras_analogicas','nvr','dvr','monitores','joystick'];
+        $actual = $instalacion->findById($id);
         $meta = [];
+        if (isset($actual['meta_equipos']) && is_string($actual['meta_equipos'])) {
+            $tmp = json_decode($actual['meta_equipos'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
+                $meta = $tmp;
+            }
+        }
+        $tocoMeta = false;
         foreach ($equipKeys as $k) {
             if (array_key_exists($k, $data)) {
                 $meta[$k] = $data[$k];
-                unset($data[$k]);
+                $tocoMeta = true;
             }
+            unset($data[$k]);
         }
-        if (isset($data['meta_equipos'])) {
-            if (is_array($data['meta_equipos'])) {
-                $meta = array_merge($meta, $data['meta_equipos']);
-            } elseif (is_string($data['meta_equipos'])) {
-                $decoded = json_decode($data['meta_equipos'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $meta = array_merge($meta, $decoded);
-                }
+        if ($tocoMeta) {
+            $soloVacios = true;
+            foreach ($meta as $v) {
+                if ($v !== '' && $v !== null) { $soloVacios = false; break; }
             }
-            unset($data['meta_equipos']);
-        }
-        if (!empty($meta)) {
-            $data['meta_equipos'] = json_encode($meta);
+            if ($soloVacios) {
+                $data['meta_equipos'] = null;
+            } else {
+                $data['meta_equipos'] = json_encode($meta, JSON_UNESCAPED_UNICODE);
+            }
         }
 
-        $instalacion->update($id, $data);
-        $updatedInstalacion = $instalacion->findById($id);
-        
-        ApiResponse::success($updatedInstalacion, 'Instalación actualizada correctamente');
+        if (isset($data['activo'])) {
+            $data['activo'] = (int)!!$data['activo'];
+        }
+
+        $allowed = [
+            'cliente_id','nombre','direccion',
+            'contacto_local','telefono_local',
+            'tipo_sistema','meta_equipos','activo'
+        ];
+        $data = array_intersect_key($data, array_flip($allowed));
+
+        $result = $instalacion->update($id, $data);
+        $updated = $instalacion->findById($id);
+        if (isset($updated['meta_equipos']) && is_string($updated['meta_equipos'])) {
+            $decoded = json_decode($updated['meta_equipos'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $updated['meta_equipos'] = $decoded;
+            }
+        }
+        ApiResponse::success($updated, $result > 0 ? 'Instalación actualizada correctamente' : 'Sin cambios');
     } catch (Exception $e) {
         ApiResponse::error('Error al actualizar instalación: ' . $e->getMessage(), 500);
     }
@@ -512,16 +516,16 @@ function deleteInstalacion($params) {
     try {
         $id = $params['id'];
         $instalacion = new Instalacion();
+        
         if (!$instalacion->findById($id)) {
             ApiResponse::notFound('Instalación');
         }
-        // Eliminar certificados asociados antes de eliminar la instalación
-        $certificado = new Certificado();
-        $certificados = $certificado->findAll(['instalacion_id' => $id]);
-        foreach ($certificados as $cert) {
-            $certificado->delete($cert['id']);
-        }
+        
+        // Aquí podrías agregar validaciones adicionales si necesitas
+        // verificar que no tenga certificados asociados, etc.
+        
         $instalacion->delete($id);
+        
         ApiResponse::success(null, 'Instalación eliminada correctamente');
     } catch (Exception $e) {
         ApiResponse::error('Error al eliminar instalación: ' . $e->getMessage(), 500);
@@ -560,10 +564,10 @@ function createTecnico() {
         }
         
         $tecnico = new Tecnico();
-        $id = $tecnico->create($data);
-        if ($id) {
-            $newTecnico = $tecnico->findById($id);
-            ApiResponse::success($newTecnico, 'Técnico creado correctamente', 201);
+        $result = $tecnico->create($data);
+        
+        if ($result) {
+            ApiResponse::success($result, 'Técnico creado correctamente', 201);
         } else {
             ApiResponse::error('Error al crear técnico', 400);
         }

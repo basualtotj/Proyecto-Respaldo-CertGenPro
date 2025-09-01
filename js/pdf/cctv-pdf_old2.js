@@ -545,29 +545,6 @@
   };
 
   const drawRow = (row, y) => {
-    // Special case: leftover verticals (1-3). Render with fixed 4-column grid width and centered columns.
-    if (row.kind === 'V_REMAINS') {
-      const cols = 4;
-      const vGap = 10;
-      const vCellW = (gridW - vGap * (cols - 1)) / cols;
-      const vCellH = vCellW * 1.35;
-      // center start column for 1-3 items
-      const take = row.items.length;
-      const startCol = Math.floor((cols - take) / 2);
-      // Draw only existing items, leaving visual breathing room (no empty boxes)
-      for (let idx = 0; idx < take; idx++) {
-        const it = row.items[idx];
-        const col = startCol + idx;
-        const cx = gridX + col * (vCellW + vGap);
-        // frame
-        doc.setDrawColor(229, 231, 235);
-        doc.setFillColor(255, 255, 255);
-        doc.rect(cx, y, vCellW, vCellH, 'S');
-        addImageCentered(it.ev, cx, y, vCellW, vCellH);
-      }
-      return Math.min(vCellH, bottomY - y);
-    }
-
     // row.items: [{ev, span}] con span en unidades (1 o 2 o 4)
     // calc width por unidad y gaps
     const spanTotal = row.items.reduce((s, it) => s + it.span, 0);
@@ -634,7 +611,7 @@
     if (V.length > 0) {
       const take = Math.min(4, V.length);
       const items = V.splice(0, take).map(ev => ({ ev, span: 1 }));
-      return { kind: 'V_REMAINS', items, take };
+      return { kind: `${take}V`, items };
     }
     if (Hh.length > 0) {
       const items = [{ ev: Hh.shift(), span: 4 }]; // 1H sola ocupa todo el ancho
@@ -698,7 +675,7 @@
         return Math.min(Math.max(hH, vH), bottomY - y);
       }
       const cellW = gridW; // 1H sola
-      return Math.min(cellW * 0.5, bottomY - y);
+      return Math.min(cellW * 0.62, bottomY - y);
     })();
 
     if (y + estRowH > bottomY) {

@@ -76,8 +76,7 @@ class DataService {
     /**
      * Método genérico para llamadas API con retry
      */
-    async 
-apiCall(endpoint, method = 'GET', data = null) {
+    async apiCall(endpoint, method = 'GET', data = null) {
         const options = {
             method,
             headers: { 'Content-Type': 'application/json' }
@@ -93,55 +92,20 @@ apiCall(endpoint, method = 'GET', data = null) {
                 const url = `${this.apiUrl}${endpoint}`;
                 console.log(`🌐 API Call (intento ${attempt}):`, method, url);
                 
+                // Agregar timeout por llamada para evitar esperas eternas
                 const controller = new AbortController();
                 const t = setTimeout(() => controller.abort(), 7000);
                 const response = await fetch(url, { ...options, signal: controller.signal });
                 clearTimeout(t);
                 
                 if (!response.ok) {
-                    // intentar leer JSON; si no es JSON, leer texto
-                    let errorMsg = response.statusText;
-                    try {
-                        const ed = await response.json();
-                        errorMsg = ed.message || ed.error || JSON.stringify(ed);
-                    } catch (_) {
-                        const txt = await response.text();
-                        errorMsg = txt?.slice(0, 300) || response.statusText;
-                    }
-                    throw new Error(`HTTP ${response.status}: ${errorMsg}`);
+                    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                    throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
                 }
                 
-                // Parse robusto: primero texto, luego JSON
-                const raw = await response.text();
-                const ct = response.headers.get('content-type') || '';
-                if (ct.includes('application/json')) {
-                    try {
-                        const result = JSON.parse(raw);
-                        console.log('✅ API Response:', result);
-                        return result.data || result;
-                    } catch (e) {
-                        // Si es POST/PUT y ya está ok, NO reintentes para evitar duplicados
-                        if (method === 'POST' || method === 'PUT') {
-                            console.warn('⚠️ Respuesta OK pero no es JSON válido. No reintento para evitar duplicados.');
-                            throw new Error('Respuesta no-JSON del servidor (evitando duplicados).');
-                        }
-                        throw e;
-                    }
-                } else {
-                    // Si viene con warnings HTML, intenta limpiar lo común
-                    const cleaned = raw.replace(/<br\/?><b>Warning[\s\S]*?<br\/?>/gi, '').trim();
-                    try {
-                        const result = JSON.parse(cleaned);
-                        console.log('✅ API Response (cleaned):', result);
-                        return result.data || result;
-                    } catch (e) {
-                        if (method === 'POST' || method === 'PUT') {
-                            console.warn('⚠️ Respuesta OK pero no-JSON (HTML/warnings). No reintento para evitar duplicados.');
-                            throw new Error('Respuesta no-JSON del servidor (evitando duplicados).');
-                        }
-                        throw new Error('Respuesta del servidor no es JSON.');
-                    }
-                }
+                const result = await response.json();
+                console.log('✅ API Response:', result);
+                return result.data || result; // Extraer data si existe
                 
             } catch (error) {
                 lastError = error;
@@ -152,12 +116,12 @@ apiCall(endpoint, method = 'GET', data = null) {
                     await this.delay(this.retryDelay * attempt);
                 } else {
                     console.error('🚨 Todos los reintentos fallaron. No se hará fallback a JSON.');
+                    // Mantener modo API y propagar el error
                     throw new Error(`API no disponible: ${error.message}`);
                 }
             }
         }
     }
-
     
     /**
      * Delay helper

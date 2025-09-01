@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors','0');
+ini_set('display_startup_errors','0');
+error_reporting(E_ALL);
+
 // ============================================
 // DATABASE CONNECTION CLASS
 // Compatible con cPanel/MySQL
@@ -203,35 +207,33 @@ abstract class BaseModel {
     }
     
     public function create($data) {
-        // Remover campos que no deben insertarse y filtrar solo los válidos
         unset($data['id'], $data['created_at'], $data['updated_at']);
-
-        // Lista de columnas válidas por tabla
-        switch ($this->table) {
-            case 'clientes':
-                $validFields = ['nombre','rut','contacto','telefono','email','activo'];
-                break;
-            case 'instalaciones':
-                $validFields = ['cliente_id','nombre','direccion','contacto_local','telefono_local','tipo_sistema','meta_equipos','descripcion','activo'];
-                break;
-            case 'tecnicos':
-                $validFields = ['nombre','especialidad','email','telefono','certificaciones','firma','activo'];
-                break;
-            case 'empresa':
-                $validFields = ['razon_social','rut','direccion','telefono','email','logo','firma','representante','cargo_representante'];
-                break;
-            default:
-                // fallback: permitir llaves string escalar del payload
-                $validFields = array_keys(array_filter($data, fn($v,$k)=>is_string($k), ARRAY_FILTER_USE_BOTH));
+        $validFields = [
+            'cliente_id', 'nombre', 'direccion', 'contacto_local', 'telefono_local',
+            'tipo_sistema', 'meta_equipos', 'descripcion', 'activo'
+        ];
+        $filtered = array_intersect_key($data, array_flip($validFields));
+        $required = ['cliente_id', 'nombre', 'direccion', 'contacto_local', 'telefono_local', 'tipo_sistema'];
+        foreach ($required as $field) {
+            if (!isset($filtered[$field]) || $filtered[$field] === null || $filtered[$field] === '') {
+                throw new Exception("El campo '$field' es obligatorio");
+            }
         }
-        // Filtrar solo los campos válidos
-    $filtered = array_intersect_key($data, array_flip($validFields));
-    $fields = array_keys($filtered);
-    $placeholders = str_repeat('?,', count($fields) - 1) . '?';
-    $sql = "INSERT INTO {$this->table} (" . implode(',', $fields) . ") VALUES ($placeholders)";
-    $this->db->query($sql, array_values($filtered));
-    return $this->db->lastInsertId();
-    // ...eliminada declaración duplicada de create($data)...
+        // Opcionales: meta_equipos, descripcion, activo
+        if (!isset($filtered['meta_equipos'])) {
+            $filtered['meta_equipos'] = null;
+        }
+        if (!isset($filtered['descripcion'])) {
+            $filtered['descripcion'] = null;
+        }
+        if (!isset($filtered['activo'])) {
+            $filtered['activo'] = 1;
+        }
+        $fields = array_keys($filtered);
+        $placeholders = str_repeat('?,', count($fields) - 1) . '?';
+        $sql = "INSERT INTO {$this->table} (" . implode(',', $fields) . ") VALUES ($placeholders)";
+        $this->db->query($sql, array_values($filtered));
+        return $this->db->lastInsertId();
     }
     
     public function update($id, $data) {

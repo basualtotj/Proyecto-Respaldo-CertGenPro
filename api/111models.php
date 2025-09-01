@@ -206,24 +206,11 @@ abstract class BaseModel {
         // Remover campos que no deben insertarse y filtrar solo los válidos
         unset($data['id'], $data['created_at'], $data['updated_at']);
 
-        // Lista de columnas válidas por tabla
-        switch ($this->table) {
-            case 'clientes':
-                $validFields = ['nombre','rut','contacto','telefono','email','activo'];
-                break;
-            case 'instalaciones':
-                $validFields = ['cliente_id','nombre','direccion','contacto_local','telefono_local','tipo_sistema','meta_equipos','descripcion','activo'];
-                break;
-            case 'tecnicos':
-                $validFields = ['nombre','especialidad','email','telefono','certificaciones','firma','activo'];
-                break;
-            case 'empresa':
-                $validFields = ['razon_social','rut','direccion','telefono','email','logo','firma','representante','cargo_representante'];
-                break;
-            default:
-                // fallback: permitir llaves string escalar del payload
-                $validFields = array_keys(array_filter($data, fn($v,$k)=>is_string($k), ARRAY_FILTER_USE_BOTH));
-        }
+        // Lista de columnas válidas según DESCRIBE instalaciones
+        $validFields = [
+            'cliente_id', 'nombre', 'direccion', 'contacto_local', 'telefono_local',
+            'tipo_sistema', 'meta_equipos', 'descripcion', 'activo'
+        ];
         // Filtrar solo los campos válidos
     $filtered = array_intersect_key($data, array_flip($validFields));
     $fields = array_keys($filtered);
