@@ -76,8 +76,7 @@ class DataService {
     /**
      * Método genérico para llamadas API con retry
      */
-    async 
-apiCall(endpoint, method = 'GET', data = null) {
+    async apiCall(endpoint, method = 'GET', data = null) {
         const options = {
             method,
             headers: { 'Content-Type': 'application/json' }

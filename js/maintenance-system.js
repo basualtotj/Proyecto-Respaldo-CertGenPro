@@ -277,20 +277,11 @@ class MaintenanceCertificateSystem {
                     if (raw) {
                         ultimo = JSON.parse(raw);
                         fuente = 'cache';
-                        // Promover a API en segundo plano si tenemos id
-                        if (ultimo && ultimo.id) {
-                            (async () => {
-                                try {
-                                    const byId = await this.dataService.apiCall(`/certificados/${ultimo.id}`);
-                                    if (byId && byId.id) {
-                                        const btn = document.getElementById('loadLastBtn');
-                                        if (btn) btn.title = 'Fuente: API';
-                                    }
-                                } catch {}
-                            })();
-                        }
+                        console.log('[DEBUG] Cargado desde cache local:', key);
                     }
-                } catch {}
+                } catch (e) {
+                    console.warn('Error leyendo cache:', e);
+                }
             }
             if (!ultimo) {
                 this.showError('No hay certificados previos para esta instalación y tipo seleccionado');
@@ -300,32 +291,126 @@ class MaintenanceCertificateSystem {
             const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val ?? '').toString(); };
             setVal('solicitudesCliente', ultimo.solicitudes_cliente || '');
             setVal('observaciones', ultimo.observaciones_generales || '');
-            // Checklist y equipos: soportar varias estructuras
+            
+            // Procesar checklist - mejorar detección de estructura
+            console.log('[DEBUG] Datos completos ultimo:', ultimo);
+            console.log('[DEBUG] checklist_data:', ultimo.checklist_data);
+            console.log('[DEBUG] Fuente de datos:', fuente);
+            console.log('[DEBUG] ultimo.cctv:', ultimo.cctv);
+            
+            // Verificar todas las propiedades del objeto
+            if (ultimo) {
+                console.log('[DEBUG] Todas las propiedades de ultimo:', Object.keys(ultimo));
+                if (ultimo.checklist_data) {
+                    console.log('[DEBUG] Propiedades de checklist_data:', Object.keys(ultimo.checklist_data));
+                }
+            }
+            
             const cd = ultimo.checklist_data;
-            // Posibles formas: array plano o objeto con { checklist: [...], items: [...], equipos: {...} }
-            const list = Array.isArray(cd)
-                ? cd
-                : (Array.isArray(cd?.checklist)
-                    ? cd.checklist
-                    : (Array.isArray(cd?.items) ? cd.items : []));
-            document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => {
-                cb.checked = list.includes(cb.value);
-            });
+            let checklistItems = [];
+            let equipos = null;
+            
+            // Procesar checklist_data si existe
+            if (cd) {
+                if (Array.isArray(cd)) {
+                    // Estructura: array directo
+                    checklistItems = cd;
+                } else if (typeof cd === 'object') {
+                    // Estructura: objeto con diferentes propiedades
+                    checklistItems = cd.checklist || cd.items || cd.list || [];
+                    equipos = cd.equipos || null;
+                    
+                    if (!Array.isArray(checklistItems) && typeof cd === 'object') {
+                        // Buscar cualquier array dentro del objeto
+                        for (const [key, value] of Object.entries(cd)) {
+                            if (Array.isArray(value) && value.length > 0) {
+                                checklistItems = value;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Si no hay checklist_data pero es de cache local, intentar extraer de cctv
+            if (fuente === 'cache' && (!checklistItems || checklistItems.length === 0)) {
+                console.log('[DEBUG] Intentando extraer datos de cache local...');
+                if (ultimo.cctv && ultimo.cctv.checklist) {
+                    checklistItems = Array.isArray(ultimo.cctv.checklist) ? ultimo.cctv.checklist : [];
+                    console.log('[DEBUG] Checklist extraído de ultimo.cctv.checklist:', checklistItems);
+                }
+                
+                // Extraer equipos de campos directos si no están en checklist_data
+                if (!equipos && ultimo.cctv) {
+                    equipos = {
+                        camaras_ip: ultimo.cctv.camaras_ip || ultimo.camarasIP || '',
+                        camaras_analogicas: ultimo.cctv.camaras_analogicas || ultimo.camarasAnalogicas || '',
+                        nvr: ultimo.cctv.nvr || ultimo.nvr || '',
+                        dvr: ultimo.cctv.dvr || ultimo.dvr || '',
+                        monitores: ultimo.cctv.monitores || ultimo.monitores || '',
+                        joystick: ultimo.cctv.joystick || ultimo.joystick || ''
+                    };
+                    console.log('[DEBUG] Equipos extraídos de cache:', equipos);
+                }
+            }
+            
+            console.log('[DEBUG] checklistItems procesados finales:', checklistItems);
+            console.log('[DEBUG] equipos procesados finales:', equipos);
+            
+            // Limpiar checklist actual
+            document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => cb.checked = false);
+            
+            // Marcar elementos del checklist
+            if (Array.isArray(checklistItems) && checklistItems.length > 0) {
+                let marcados = 0;
+                document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => {
+                    if (checklistItems.includes(cb.value)) {
+                        cb.checked = true;
+                        marcados++;
+                        console.log('[DEBUG] Checklist marcado:', cb.value);
+                    }
+                });
+                console.log(`[DEBUG] Total checkboxes marcados: ${marcados}`);
+            } else {
+                console.log('[DEBUG] No hay elementos de checklist para marcar');
+            }
 
-            // Rellenar equipos si existen en checklist_data
-            const equipos = cd && typeof cd === 'object' ? (cd.equipos || null) : null;
-            if (equipos) {
-                const fill = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = String(v); };
+            // Rellenar equipos
+            console.log('[DEBUG] equipos a procesar:', equipos);
+            
+            if (equipos && typeof equipos === 'object') {
+                const fill = (id, v) => { 
+                    const el = document.getElementById(id); 
+                    if (el && v != null && v !== '') {
+                        el.value = String(v);
+                        console.log(`[DEBUG] Campo ${id} = ${v}`);
+                    }
+                };
                 fill('camarasIP', equipos.camaras_ip);
                 fill('camarasAnalogicas', equipos.camaras_analogicas);
                 fill('nvr', equipos.nvr);
                 fill('dvr', equipos.dvr);
                 fill('monitores', equipos.monitores);
-                const jsField = document.getElementById('joystick');
-                if (jsField && equipos.joystick != null) jsField.value = String(equipos.joystick);
+                fill('joystick', equipos.joystick);
+            } else {
+                console.log('[DEBUG] No hay datos de equipos para rellenar');
             }
 
+            // Forzar actualización del preview y otros elementos
             this.updatePreview();
+            
+            // Disparar eventos change para actualizar cualquier lógica dependiente
+            // EXCLUIR clienteSelect e instalacionSelect para evitar reseteo de instalaciones
+            document.querySelectorAll('select:not(#clienteSelect):not(#instalacionSelect), input[type="text"], input[type="number"], textarea').forEach(el => {
+                if (el.value) {
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+            
+            // Disparar eventos para checkboxes marcados
+            document.querySelectorAll('input[name="cctvCheck"]:checked').forEach(cb => {
+                cb.dispatchEvent(new Event('change', { bubbles: true }));
+            });
             const loadLastBtn = document.getElementById('loadLastBtn');
             if (loadLastBtn) loadLastBtn.title = `Fuente: ${fuente === 'api' ? 'API' : 'Caché local'}`;
             this.showSuccess(`Datos del último certificado cargados (${fuente === 'api' ? 'API' : 'Caché local'})`);
@@ -1317,8 +1402,21 @@ class MaintenanceCertificateSystem {
         // Guardar en caché como último certificado para esta instalación
         try {
             const key = this.makeLastCacheKey(this.currentCertificateType || '', Number(payload.cliente_id), Number(payload.instalacion_id));
-            localStorage.setItem(key, JSON.stringify(created));
-        } catch {}
+            // Combinar datos del servidor con payload original para asegurar que tenemos checklist_data
+            const cacheData = {
+                ...created,
+                checklist_data: payload.checklist_data || created.checklist_data,
+                // También guardamos los datos originales por compatibilidad
+                cctv: payload.checklist_data ? {
+                    checklist: payload.checklist_data.checklist || [],
+                    ...payload.checklist_data.equipos
+                } : null
+            };
+            localStorage.setItem(key, JSON.stringify(cacheData));
+            console.log('[DEBUG] Cache guardado:', key, cacheData);
+        } catch (e) {
+            console.warn('Error guardando en cache:', e);
+        }
 
         // Reset suave del formulario
         this.showSuccess(`Certificado ${this.assignedCertificateNumber} generado`);
@@ -2091,9 +2189,9 @@ class MaintenanceCertificateSystem {
      */
     resetFormKeepType() {
         const type = this.currentCertificateType;
-        // Limpiar inputs base
+        // Limpiar inputs base (MANTENER cliente, instalación y técnico para facilitar certificados consecutivos)
         const ids = [
-            'clienteSelect','instalacionSelect','tecnicoSelect','fechaMantenimiento',
+            'fechaMantenimiento',
             'solicitudesCliente','observaciones','camarasAnalogicas','camarasIP',
             'monitores','dvr','nvr','joystick'
         ];
@@ -2105,11 +2203,24 @@ class MaintenanceCertificateSystem {
         this.removeFirma('cliente');
         // Limpiar evidencias
         this.evidencias = [];
+        // Limpiar la galería de evidencias visualmente
+        const evidenciaGallery = document.getElementById('evidenciaGallery');
+        if (evidenciaGallery) {
+            evidenciaGallery.innerHTML = '';
+        }
+        // Limpiar el input de evidencias
+        const evidenciaInput = document.getElementById('evidenciaInput');
+        if (evidenciaInput) {
+            evidenciaInput.value = '';
+        }
         // Mantener tipo y refrescar UI específica
         this.currentCertificateType = type;
         this.showSpecificForm();
         this.updateFormTitle();
         this.updatePreview();
+        
+        // Establecer fecha actual para el nuevo certificado
+        this.setCurrentDate();
     }
 
     /**
@@ -2306,15 +2417,35 @@ window.removeFirma = function(tipo) {
 
 // Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', () => {
-    window.maintenanceSystem = new MaintenanceCertificateSystem();
+    // Esperar a que DataService esté disponible
+    if (typeof DataService !== 'undefined') {
+        window.maintenanceSystem = new MaintenanceCertificateSystem();
+    } else {
+        // Esperar un poco más si DataService no está disponible
+        setTimeout(() => {
+            if (typeof DataService !== 'undefined') {
+                window.maintenanceSystem = new MaintenanceCertificateSystem();
+            } else {
+                console.error('DataService no está disponible');
+            }
+        }, 100);
+    }
 });
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        if (!window.maintenanceSystem) {
+        if (!window.maintenanceSystem && typeof DataService !== 'undefined') {
             window.maintenanceSystem = new MaintenanceCertificateSystem();
         }
     });
 } else {
-    window.maintenanceSystem = new MaintenanceCertificateSystem();
+    if (typeof DataService !== 'undefined') {
+        window.maintenanceSystem = new MaintenanceCertificateSystem();
+    } else {
+        setTimeout(() => {
+            if (typeof DataService !== 'undefined') {
+                window.maintenanceSystem = new MaintenanceCertificateSystem();
+            }
+        }, 100);
+    }
 }

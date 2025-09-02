@@ -544,170 +544,212 @@
       };
   drawSignature(sig1X, sigY, 'Técnico Responsable', formData?.firmas?.tecnico || null, info?.tecnico?.nombre || '');
   drawSignature(sig2X, sigY, 'Representante Empresa', formData?.firmas?.cliente || null, info?.tecnico?.nombre || '');
-    }    async _drawEvidencePages(doc, evidencias, systemLabel, code, fechaText, logoDataUrl) {
-      const { pdfWidth: W, pdfHeight: H, margin: M } = this;
-      const headerH = 28, footerH = 16;
-      const gridX = M, gridW = W - M * 2;
-      const topY = M + headerH + 10;
-      const bottomY = H - M - footerH;
-      const vGapRow = 10, hGap = 10;
-
-      const measureImg = (src) => new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve({ w: img.naturalWidth || img.width || 0, h: img.naturalHeight || img.height || 0 });
-        img.onerror = () => resolve({ w: 0, h: 0 });
-        img.src = src;
-      });
-
-      const addImageCentered = (ev, x, y, cellW, cellH) => {
-        const w = ev.w || 1000, h = ev.h || 1000, ratio = w / h;
-        let drawW = cellW, drawH = drawW / ratio;
-        if (drawH > cellH) { drawH = cellH; drawW = drawH * ratio; }
-        const ox = x + (cellW - drawW) / 2;
-        const oy = y + (cellH - drawH) / 2;
-        try {
-          const fmt = (ev.src || '').includes('image/png') ? 'PNG' : 'JPEG';
-          doc.addImage(ev.src, fmt, ox, oy, drawW, drawH, undefined, 'FAST');
-        } catch {}
-      };
-
-      const drawRow = (row, y) => {
-        if (row.kind === 'V_REMAINS') {
-          const cols = 4, vGap = 10;
-          const vCellW = (gridW - vGap * (cols - 1)) / cols;
-          const vCellH = vCellW * 1.35;
-          const take = row.items.length;
-          const startCol = Math.floor((cols - take) / 2);
-          for (let idx = 0; idx < take; idx++) {
-            const it = row.items[idx];
-            const col = startCol + idx;
-            const cx = gridX + col * (vCellW + vGap);
-            doc.setDrawColor(229, 231, 235); doc.setFillColor(255, 255, 255);
-            doc.rect(cx, y, vCellW, vCellH, 'S');
-            addImageCentered(it.ev, cx, y, vCellW, vCellH);
-          }
-          return Math.min(vCellH, bottomY - y);
-        }
-
-        const spanTotal = row.items.reduce((s, it) => s + it.span, 0);
-        const gaps = row.items.length - 1;
-        const unitW = (gridW - hGap * gaps) / spanTotal;
-
-        const heights = row.items.map(it => {
-          const cellW = unitW * it.span;
-          if (it.ev.orientation === 'vertical') return cellW * 1.35;
-          if (it.ev.orientation === 'horizontal') return cellW * 0.62;
-          return cellW * 0.8;
-        });
-        const rowH = Math.min(Math.max(...heights), bottomY - y);
-
-        let cx = gridX;
-        for (const it of row.items) {
-          const cellW = unitW * it.span;
-          doc.setDrawColor(229, 231, 235); doc.setFillColor(255, 255, 255);
-          doc.rect(cx, y, cellW, rowH, 'S');
-          addImageCentered(it.ev, cx, y, cellW, rowH);
-          cx += cellW + hGap;
-        }
-        return rowH;
-      };
-
-      // Preproceso: medir y clasificar
-      const processed = [];
-      for (const ev of evidencias) {
-        try {
-          const resized = await this._resizeImage(ev.src, 1400, 0.82);
-          const src = resized || ev.src;
-          const dims = await measureImg(src);
-          const orientation = (dims.h && dims.w) ? (dims.h >= dims.w ? 'vertical' : 'horizontal') : 'horizontal';
-          processed.push({ ...ev, src, w: dims.w, h: dims.h, orientation });
-        } catch {
-          processed.push(ev);
-        }
-      }
-
-      const V = processed.filter(e => e.orientation === 'vertical').slice();
-      const Hh = processed.filter(e => e.orientation !== 'vertical').slice();
-
-      const nextRow = () => {
-        if (V.length >= 4) return { kind: '4V', items: V.splice(0,4).map(ev => ({ev, span:1})) };
-        if (Hh.length >= 2) return { kind: '2H', items: Hh.splice(0,2).map(ev => ({ev, span:2})) };
-        if (Hh.length >= 1 && V.length >= 2) return { kind: '1H2V', items: [{ev:Hh.shift(), span:2}, {ev:V.shift(), span:1}, {ev:V.shift(), span:1}] };
-        if (Hh.length >= 1 && V.length >= 1) return { kind: 'MIX_REMAINS', items: [{ev:Hh.shift(), span:2}, {ev:V.shift(), span:1}] };
-        if (V.length > 0) {
-          const take = Math.min(3, V.length);
-          return { kind: 'V_REMAINS', items: V.splice(0, take).map(ev => ({ ev, span: 1 })) };
-        }
-        if (Hh.length === 1) return { kind: '1H', items: [{ev:Hh.shift(), span:4}] };
-        return null;
-      };
-
-      const drawSectionHeader = () => {
-        let ty = topY;
-        
-        // Aplicar el mismo formato que los títulos de sección de la página 1
-        const barH = 8;
-        const barW = 1.1;
-        const gradX = M + barW;
-        const gradW = (W - M) - gradX;
-        const gradY = ty - (barH - 3);
-        const gradH = barH;
-        this._drawHorizontalGradient(doc, gradX, gradY, gradW, gradH, [239, 246, 255], [255, 255, 255], 56);
-        
-        doc.setFillColor(67, 105, 231); // C.blue
-        doc.rect(M, ty - (barH - 3), barW, barH, 'F');
-        
-        doc.setFont('helvetica', 'bold'); 
-        doc.setFontSize(9.5); 
-        doc.setTextColor(30, 41, 59);
-        doc.text('EVIDENCIA FOTOGRÁFICA', M + 5, ty);
-        
-        ty += 5.2; 
-        doc.setDrawColor(226, 232, 240); 
-        doc.setLineWidth(0.3); 
-        doc.line(M, ty, W - M, ty);
-        return ty + 7.5;
-      };
-
-      doc.addPage('a4', 'portrait');
-      this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
-      let y = drawSectionHeader();
-
-      while (true) {
-        const row = nextRow();
-        if (!row) break;
-
-        const estRowH = (() => {
-          if (row.kind === 'V_REMAINS') {
-            const cols = 4, vGap=10;
-            const vCellW = (gridW - vGap*(cols-1))/cols;
-            return vCellW * 1.35;
-          }
-          const spanTotal = row.items.reduce((s, it) => s + it.span, 0);
-          const unitW = (gridW - hGap * (row.items.length - 1)) / spanTotal;
-          const heights = row.items.map(it => {
-            const cellW = unitW * it.span;
-            if (it.ev.orientation === 'vertical') return cellW * 1.35;
-            if (it.ev.orientation === 'horizontal') return cellW * 0.62;
-            return cellW * 0.8;
-          });
-          return Math.max(...heights);
-        })();
-
-        if (y + estRowH > bottomY) {
-          this._drawFooter(doc, code);
-          doc.addPage('a4', 'portrait');
-          this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
-          y = drawSectionHeader();
-        }
-
-        const rowH = drawRow(row, y);
-        y += rowH + vGapRow;
-      }
-
-      this._drawFooter(doc, code);
     }
+
+    async _drawEvidencePages(doc, evidencias, systemLabel, code, fechaText, logoDataUrl) {
+  const { pdfWidth: W, pdfHeight: H, margin: M } = this;
+
+  // ----- Layout base -----
+  const headerH = 28, footerH = 16;
+  const gridX = M, gridW = W - M * 2;
+  const topY = M + headerH + 10;
+  const bottomY = H - M - footerH;
+  const vGapRow = 10;       // gap vertical entre filas
+  const hGap = 10;          // gap horizontal por defecto
+  const unitCols = 4;       // matriz conceptual de 4 unidades por fila
+
+  // ----- Utilidades -----
+  const measureImg = (src) => new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve({ w: img.naturalWidth || img.width || 0, h: img.naturalHeight || img.height || 0 });
+    img.onerror = () => resolve({ w: 0, h: 0 });
+    img.src = src;
+  });
+
+  const addImageCentered = (ev, x, y, cellW, cellH) => {
+    const w = ev.w || 1000, h = ev.h || 1000, ratio = w / h;
+    // Ajuste a caja (contain)
+    let drawW = cellW, drawH = drawW / ratio;
+    if (drawH > cellH) { drawH = cellH; drawW = drawH * ratio; }
+    const ox = x + (cellW - drawW) / 2;
+    const oy = y + (cellH - drawH) / 2;
+    try {
+      const fmt = (ev.src || '').includes('image/png') ? 'PNG' : 'JPEG';
+      doc.addImage(ev.src, fmt, ox, oy, drawW, drawH, undefined, 'FAST');
+    } catch { /* noop */ }
+  };
+
+  const drawRow = (row, y) => {
+    // Special case: leftover verticals (1-3). Render with fixed 4-column grid width and centered columns.
+    if (row.kind === 'V_REMAINS') {
+      const cols = 4;
+      const vGap = 10;
+      const vCellW = (gridW - vGap * (cols - 1)) / cols;
+      const vCellH = vCellW * 1.35;
+      // center start column for 1-3 items
+      const take = row.items.length;
+      const startCol = Math.floor((cols - take) / 2);
+      // Draw only existing items, leaving visual breathing room (no empty boxes)
+      for (let idx = 0; idx < take; idx++) {
+        const it = row.items[idx];
+        const col = startCol + idx;
+        const cx = gridX + col * (vCellW + vGap);
+        // frame
+        doc.setDrawColor(229, 231, 235);
+        doc.setFillColor(255, 255, 255);
+        doc.rect(cx, y, vCellW, vCellH, 'S');
+        addImageCentered(it.ev, cx, y, vCellW, vCellH);
+      }
+      return Math.min(vCellH, bottomY - y);
+    }
+
+    // row.items: [{ev, span}] con span en unidades (1 o 2 o 4)
+    // calc width por unidad y gaps
+    const spanTotal = row.items.reduce((s, it) => s + it.span, 0);
+    const gaps = row.items.length - 1;
+    const unitW = (gridW - hGap * gaps) / spanTotal;
+    // Altura sugerida según tipo: vertical=1.35 * cellW; horizontal=0.62 * cellW
+    const heights = row.items.map(it => {
+      const cellW = unitW * it.span;
+      if (it.ev.orientation === 'vertical') return cellW * 1.35;
+      if (it.ev.orientation === 'horizontal') return cellW * 0.62;
+      return cellW * 0.8;
+    });
+    const rowH = Math.min(Math.max(...heights), bottomY - y); // no exceder página
+
+    // Dibujar celdas
+    let cx = gridX;
+    for (const it of row.items) {
+      const cellW = unitW * it.span;
+      // marco sutil
+      doc.setDrawColor(229, 231, 235);
+      doc.setFillColor(255, 255, 255);
+      doc.rect(cx, y, cellW, rowH, 'S');
+      addImageCentered(it.ev, cx, y, cellW, rowH);
+      cx += cellW + hGap;
+    }
+    return rowH;
+  };
+
+  // ----- Preprocesado: compresión ligera + orientación -----
+  const processed = [];
+  for (const ev of evidencias) {
+    try {
+      const resized = await this._resizeImage(ev.src, 1400, 0.82);
+      const src = resized || ev.src;
+      const dims = await measureImg(src);
+      const orientation = (dims.h && dims.w) ? (dims.h >= dims.w ? 'vertical' : 'horizontal') : 'horizontal';
+      processed.push({ ...ev, src, w: dims.w, h: dims.h, orientation });
+    } catch {
+      processed.push(ev);
+    }
+  }
+
+  // ----- Agrupación por filas (greedy con prioridades) -----
+  const V = processed.filter(e => e.orientation === 'vertical').slice();
+  const Hh = processed.filter(e => e.orientation !== 'vertical').slice();
+
+  const nextRow = () => {
+    if (V.length >= 4) {
+      const items = V.splice(0, 4).map(ev => ({ ev, span: 1 }));
+      return { kind: '4V', items };
+    }
+    if (Hh.length >= 2) {
+      const items = Hh.splice(0, 2).map(ev => ({ ev, span: 2 }));
+      return { kind: '2H', items };
+    }
+    if (Hh.length >= 1 && V.length >= 2) {
+      const items = [
+        { ev: Hh.shift(), span: 2 },
+        { ev: V.shift(),  span: 1 },
+        { ev: V.shift(),  span: 1 },
+      ];
+      return { kind: '1H2V', items };
+    }
+    if (V.length > 0) {
+      const take = Math.min(4, V.length);
+      const items = V.splice(0, take).map(ev => ({ ev, span: 1 }));
+      return { kind: 'V_REMAINS', items, take };
+    }
+    if (Hh.length > 0) {
+      const items = [{ ev: Hh.shift(), span: 4 }]; // 1H sola ocupa todo el ancho
+      return { kind: '1H', items };
+    }
+    return null;
+  };
+
+  // ----- Paginación y render -----
+  let page = 0;
+  let y = topY;
+
+  const drawSectionHeader = () => {
+    // Encabezado elegante + título sección
+    this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
+    let ty = M + 32;
+    const { colors: C } = this;
+    const barH = 8, barW = 1.1;
+    const gradX = M + barW, gradW = (W - M) - gradX;
+    const gradY = ty - (barH - 3), gradH = barH;
+    this._drawHorizontalGradient(doc, gradX, gradY, gradW, gradH, [239,246,255],[255,255,255],56);
+    doc.setFillColor(...C.blue);
+    doc.rect(M, ty - (barH - 3), barW, barH, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(30,41,59);
+    doc.text('Evidencia fotográfica', M + 5, ty);
+    ty += 5.2;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(M, ty, W - M, ty);
+    return ty + 7.5;
+  };
+
+  // Página 2 (primera de evidencias)
+  doc.addPage('a4', 'portrait');
+  y = drawSectionHeader();
+  page++;
+
+  while (true) {
+    const row = nextRow();
+    if (!row) break;
+
+    // Estimar altura de fila para paginación
+    const estRowH = (() => {
+      if (row.kind === '4V' || /V$/.test(row.kind)) {
+        const cols = row.items.length;
+        const gaps = Math.max(0, cols - 1);
+        const cellW = (gridW - hGap * gaps) / cols;
+        return Math.min((cellW * 1.35), bottomY - y);
+      }
+      if (row.kind === '2H') {
+        const gaps = 1;
+        const cellW = (gridW - hGap * gaps) / 2;
+        return Math.min(cellW * 0.62, bottomY - y);
+      }
+      if (row.kind === '1H2V') {
+        const unitW = (gridW - hGap * 2) / 4;
+        const hH = (unitW * 2) * 0.62;
+        const vH = (unitW * 1) * 1.35;
+        return Math.min(Math.max(hH, vH), bottomY - y);
+      }
+      const cellW = gridW; // 1H sola
+      return Math.min(cellW * 0.5, bottomY - y);
+    })();
+
+    if (y + estRowH > bottomY) {
+      this._drawFooter(doc, code);
+      doc.addPage('a4', 'portrait');
+      y = drawSectionHeader();
+      page++;
+    }
+
+    const rowH = drawRow(row, y);
+    y += rowH + vGapRow;
+  }
+
+  this._drawFooter(doc, code);
+}
 
     
 
@@ -716,15 +758,10 @@
       const footerY = H - M - 8;
       doc.setDrawColor(229, 231, 235);
       doc.line(M, footerY, W - M, footerY);
-      
-      // Asegurar formato correcto del footer (sin negritas)
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(75, 85, 99);
-      const today = new Date().toLocaleDateString('es-ES');
-      doc.text(`Generado el: ${today} | Puede validar este certificado en nuestra web usando este código: ${code || '-'}` , W / 2, footerY + 5, { align: 'center' });
-      
-      doc.setFont('helvetica', 'normal');
+  const today = new Date().toLocaleDateString('es-ES');
+  doc.text(`Generado el: ${today} | Puede validar este certificado en nuestra web usando este código: ${code || '-'}` , W / 2, footerY + 5, { align: 'center' });
       doc.setTextColor(51, 65, 85);
       doc.text('Redes y CCTV  •  María Eugenia López 9726, Antofagasta  •  www.redesycctv.cl  •  +56 9 630 671 69', W / 2, footerY + 10, { align: 'center' });
     }

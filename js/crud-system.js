@@ -542,26 +542,30 @@ class CRUDSystem {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                             <input type="text" name="nombre" value="${data?.nombre || ''}" required
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Nombre completo del cliente">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">RUT</label>
-                            <input type="text" name="rut" value="${data?.rut || ''}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">RUT *</label>
+                            <input type="text" name="rut" value="${data?.rut || ''}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="12.345.678-9">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
-                            <input type="text" name="contacto" value="${data?.contacto || ''}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Contacto *</label>
+                            <input type="text" name="contacto" value="${data?.contacto || ''}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Nombre del contacto principal">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                            <input type="tel" name="telefono" value="${data?.telefono || ''}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+                            <input type="tel" name="telefono" value="${data?.telefono || ''}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="+56 9 XXXX XXXX">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" name="email" value="${data?.email || ''}"
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                            <input type="email" name="email" value="${data?.email || ''}" required
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="correo@dominio.com">
                         </div>
@@ -701,11 +705,12 @@ class CRUDSystem {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                             <input type="text" name="nombre" value="${data?.nombre || ''}" required
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Nombre completo del técnico">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Especialidad</label>
-                            <select name="especialidad" 
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Especialidad *</label>
+                            <select name="especialidad" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Seleccionar especialidad</option>
                                 <option value="CCTV" ${data?.especialidad === 'CCTV' ? 'selected' : ''}>CCTV</option>
@@ -716,14 +721,16 @@ class CRUDSystem {
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" name="email" value="${data?.email || ''}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                            <input type="email" name="email" value="${data?.email || ''}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="correo@dominio.com">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                            <input type="tel" name="telefono" value="${data?.telefono || ''}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+                            <input type="tel" name="telefono" value="${data?.telefono || ''}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="+56 9 XXXX XXXX">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Certificaciones</label>
@@ -971,12 +978,18 @@ class CRUDSystem {
         console.log('✅ Modal encontrado, removiendo hidden class');
         modal.classList.remove('hidden');
         
-        // Setup form submission
+        // Setup form submission (remover listeners anteriores)
         const form = document.getElementById('crudForm');
         if (form) {
-            form.addEventListener('submit', (e) => {
+            // Clonar el formulario para remover todos los event listeners
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            // Agregar el nuevo event listener
+            newForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.handleFormSubmit(form);
+                console.log('🚀 Form submit interceptado');
+                this.handleFormSubmit(newForm);
             });
         }
         
@@ -1021,8 +1034,30 @@ class CRUDSystem {
      * Manejar envío de formulario
      */
     async handleFormSubmit(form) {
+        console.log('🚀 handleFormSubmit iniciado');
+        
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+        
+        console.log('📝 FormData extraída:', data);
+        
+        // Validar campos obligatorios antes de continuar
+        console.log('🔍 Iniciando validación...');
+        const validationResult = this.validateForm(form, data);
+        console.log('📋 Resultado de validación:', validationResult);
+        
+        if (!validationResult.isValid) {
+            console.log('❌ Validación falló:', validationResult.message);
+            this.showError(validationResult.message);
+            // Llevar el foco al primer campo con error
+            if (validationResult.firstInvalidField) {
+                validationResult.firstInvalidField.focus();
+                validationResult.firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+        
+        console.log('✅ Validación exitosa, continuando...');
         
         // Convertir checkbox a boolean
         if (data.hasOwnProperty('activo')) {
@@ -1065,8 +1100,91 @@ class CRUDSystem {
     }
 
     /**
-     * Procesar archivos de imagen y convertir a base64
+     * Validar campos obligatorios del formulario
      */
+    validateForm(form, data) {
+        const type = this.getTypeFromForm();
+        console.log('🔍 Validando formulario para tipo:', type);
+        console.log('📝 Datos recibidos:', data);
+        
+        let requiredFields = [];
+        let firstInvalidField = null;
+
+        // Definir campos obligatorios según el tipo
+        switch (type) {
+            case 'cliente':
+                requiredFields = [
+                    { name: 'nombre', label: 'Nombre' },
+                    { name: 'rut', label: 'RUT' },
+                    { name: 'contacto', label: 'Contacto' },
+                    { name: 'telefono', label: 'Teléfono' },
+                    { name: 'email', label: 'Email' }
+                ];
+                break;
+            case 'instalacion':
+                requiredFields = [
+                    { name: 'cliente_id', label: 'Cliente' },
+                    { name: 'nombre', label: 'Nombre' },
+                    { name: 'direccion', label: 'Dirección' }
+                ];
+                break;
+            case 'tecnico':
+                requiredFields = [
+                    { name: 'nombre', label: 'Nombre' },
+                    { name: 'especialidad', label: 'Especialidad' },
+                    { name: 'email', label: 'Email' },
+                    { name: 'telefono', label: 'Teléfono' }
+                ];
+                break;
+            case 'empresa':
+                requiredFields = [
+                    { name: 'nombre_empresa', label: 'Nombre Empresa' },
+                    { name: 'rut_empresa', label: 'RUT Empresa' },
+                    { name: 'direccion', label: 'Dirección' },
+                    { name: 'nombre_representante', label: 'Nombre Representante' }
+                ];
+                break;
+        }
+
+        console.log('📋 Campos obligatorios a validar:', requiredFields);
+
+        // Validar cada campo obligatorio
+        for (const field of requiredFields) {
+            const value = data[field.name];
+            const fieldElement = form.querySelector(`[name="${field.name}"]`);
+            
+            console.log(`🔍 Validando ${field.name}:`, { value, hasValue: !!value, trimmedValue: value?.toString().trim() });
+            
+            if (!value || (typeof value === 'string' && value.trim() === '') || value === 'undefined' || value === 'null') {
+                console.error(`❌ Campo ${field.name} está vacío:`, value);
+                
+                // Marcar campo como inválido visualmente
+                if (fieldElement) {
+                    fieldElement.classList.add('border-red-500', 'bg-red-50');
+                    fieldElement.classList.remove('border-gray-300');
+                    
+                    if (!firstInvalidField) {
+                        firstInvalidField = fieldElement;
+                    }
+                }
+                
+                return {
+                    isValid: false,
+                    message: `El campo "${field.label}" es obligatorio`,
+                    firstInvalidField: firstInvalidField
+                };
+            } else {
+                // Limpiar estilos de error si el campo es válido
+                if (fieldElement) {
+                    fieldElement.classList.remove('border-red-500', 'bg-red-50');
+                    fieldElement.classList.add('border-gray-300');
+                }
+            }
+        }
+
+        console.log('✅ Validación exitosa');
+        return { isValid: true };
+    }
     async processImageFiles(form, data) {
         const fileInputs = form.querySelectorAll('input[type="file"]');
         
@@ -1101,10 +1219,24 @@ class CRUDSystem {
      */
     getTypeFromForm() {
         const title = document.getElementById('modalTitle').textContent.toLowerCase();
+        console.log('🔍 Detectando tipo desde título:', title);
+        
         if (title.includes('cliente')) return 'cliente';
-        if (title.includes('instalación')) return 'instalacion';
-        if (title.includes('técnico')) return 'tecnico';
+        if (title.includes('instalación') || title.includes('instalacion')) return 'instalacion';
+        if (title.includes('técnico') || title.includes('tecnico')) return 'tecnico';
         if (title.includes('empresa')) return 'empresa';
+        
+        // Si no se detecta desde el título, intentar desde el formulario
+        const form = document.getElementById('crudForm');
+        if (form) {
+            // Buscar campos específicos para determinar el tipo
+            if (form.querySelector('[name="rut"]') && form.querySelector('[name="contacto"]')) return 'cliente';
+            if (form.querySelector('[name="cliente_id"]') && form.querySelector('[name="direccion"]')) return 'instalacion';
+            if (form.querySelector('[name="especialidad"]') && form.querySelector('[name="certificaciones"]')) return 'tecnico';
+            if (form.querySelector('[name="nombre_empresa"]') && form.querySelector('[name="rut_empresa"]')) return 'empresa';
+        }
+        
+        console.warn('⚠️ No se pudo determinar el tipo, usando cliente como fallback');
         return 'cliente'; // fallback
     }
 

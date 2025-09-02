@@ -645,33 +645,13 @@
 
       const drawSectionHeader = () => {
         let ty = topY;
-        
-        // Aplicar el mismo formato que los títulos de sección de la página 1
-        const barH = 8;
-        const barW = 1.1;
-        const gradX = M + barW;
-        const gradW = (W - M) - gradX;
-        const gradY = ty - (barH - 3);
-        const gradH = barH;
-        this._drawHorizontalGradient(doc, gradX, gradY, gradW, gradH, [239, 246, 255], [255, 255, 255], 56);
-        
-        doc.setFillColor(67, 105, 231); // C.blue
-        doc.rect(M, ty - (barH - 3), barW, barH, 'F');
-        
-        doc.setFont('helvetica', 'bold'); 
-        doc.setFontSize(9.5); 
-        doc.setTextColor(30, 41, 59);
-        doc.text('EVIDENCIA FOTOGRÁFICA', M + 5, ty);
-        
-        ty += 5.2; 
-        doc.setDrawColor(226, 232, 240); 
-        doc.setLineWidth(0.3); 
-        doc.line(M, ty, W - M, ty);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(30,41,59);
+        doc.text('Evidencia fotográfica', M + 5, ty);
+        ty += 5.2; doc.setDrawColor(226,232,240); doc.setLineWidth(0.3); doc.line(M, ty, W - M, ty);
         return ty + 7.5;
       };
 
       doc.addPage('a4', 'portrait');
-      this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
       let y = drawSectionHeader();
 
       while (true) {
@@ -698,7 +678,6 @@
         if (y + estRowH > bottomY) {
           this._drawFooter(doc, code);
           doc.addPage('a4', 'portrait');
-          this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
           y = drawSectionHeader();
         }
 
@@ -716,15 +695,10 @@
       const footerY = H - M - 8;
       doc.setDrawColor(229, 231, 235);
       doc.line(M, footerY, W - M, footerY);
-      
-      // Asegurar formato correcto del footer (sin negritas)
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(75, 85, 99);
-      const today = new Date().toLocaleDateString('es-ES');
-      doc.text(`Generado el: ${today} | Puede validar este certificado en nuestra web usando este código: ${code || '-'}` , W / 2, footerY + 5, { align: 'center' });
-      
-      doc.setFont('helvetica', 'normal');
+  const today = new Date().toLocaleDateString('es-ES');
+  doc.text(`Generado el: ${today} | Puede validar este certificado en nuestra web usando este código: ${code || '-'}` , W / 2, footerY + 5, { align: 'center' });
       doc.setTextColor(51, 65, 85);
       doc.text('Redes y CCTV  •  María Eugenia López 9726, Antofagasta  •  www.redesycctv.cl  •  +56 9 630 671 69', W / 2, footerY + 10, { align: 'center' });
     }

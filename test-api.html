@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Conexión API</title>
+</head>
+<body>
+    <h1>Test de Conexión API</h1>
+    <div id="resultado"></div>
+    <button onclick="probarAPI()">Probar API</button>
+    
+    <script>
+        async function probarAPI() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = 'Probando conexión...';
+            
+            try {
+                // Probar API de empresa
+                const response = await fetch('/api/empresa');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultado.innerHTML = `
+                        <h2 style="color: green;">✅ Conexión exitosa</h2>
+                        <p><strong>Empresa:</strong> ${data.data[0].nombre_empresa}</p>
+                        <p><strong>RUT:</strong> ${data.data[0].rut_empresa}</p>
+                        <p><strong>Email:</strong> ${data.data[0].email}</p>
+                    `;
+                } else {
+                    resultado.innerHTML = '<h2 style="color: red;">❌ Error en API</h2><p>' + data.message + '</p>';
+                }
+            } catch (error) {
+                resultado.innerHTML = '<h2 style="color: red;">❌ Error de conexión</h2><p>' + error.message + '</p>';
+                console.error('Error:', error);
+            }
+        }
+        
+        // Probar automáticamente al cargar
+        window.onload = function() {
+            probarAPI();
+        }
+    </script>
+</body>
+</html>

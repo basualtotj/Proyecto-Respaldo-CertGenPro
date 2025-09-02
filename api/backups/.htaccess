@@ -1,0 +1,8 @@
+# Deny access to backup files
+<Files "*.sql">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Protect against directory browsing
+Options -Indexes
