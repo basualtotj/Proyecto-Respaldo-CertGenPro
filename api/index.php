@@ -4,6 +4,16 @@
 // Archivo principal que maneja todas las rutas
 // ============================================
 
+// Configurar error reporting para evitar warnings que contaminen JSON
+error_reporting(E_ERROR | E_PARSE);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
+// Limpiar cualquier output buffer previo
+if (ob_get_level()) {
+    ob_clean();
+}
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -22,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'models.php';
 
 // Auto-ensure required schema bits exist (idempotent and safe)
+// TEMPORALMENTE DESHABILITADO PARA DEBUG
+/*
 try {
     $db = Database::getInstance();
     // Add instalaciones.meta_equipos if missing
@@ -29,6 +41,7 @@ try {
 } catch (Exception $e) {
     // Non-fatal; continue serving API
 }
+*/
 
 // ============================================
 // RESPONSE HELPER CLASS

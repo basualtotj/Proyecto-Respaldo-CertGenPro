@@ -53,7 +53,7 @@ class Auth {
                     'nombre' => $user['nombre'],
                     'rol' => $user['rol']
                 ],
-                'redirect' => 'dashboard-simple.php'
+                'redirect' => 'dashboard.php'
             ];
             
         } catch (Exception $e) {

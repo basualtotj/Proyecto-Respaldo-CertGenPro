@@ -10,8 +10,7 @@ class CRUDSystem {
             clientes: [],
             instalaciones: [],
             tecnicos: [],
-            empresa: [],
-            imagenes: []
+            empresa: []
         };
         
         this.init();
@@ -81,9 +80,6 @@ class CRUDSystem {
 
         // Refresh buttons
         document.getElementById('refreshClientesBtn')?.addEventListener('click', () => this.refreshData('clientes'));
-
-        // Image upload
-        this.setupImageUpload();
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -185,13 +181,11 @@ class CRUDSystem {
                     }
                 }
             }
-            this.data.imagenes = [];
             
             console.log('✅ Datos cargados exitosamente:', {
                 clientes: this.data.clientes?.length,
                 instalaciones: this.data.instalaciones?.length,
-                tecnicos: this.data.tecnicos?.length,
-                imagenes: this.data.imagenes?.length
+                tecnicos: this.data.tecnicos?.length
             });
             
         } catch (error) {
@@ -202,7 +196,6 @@ class CRUDSystem {
             this.data.clientes = this.data.clientes || [];
             this.data.instalaciones = this.data.instalaciones || [];
             this.data.tecnicos = this.data.tecnicos || [];
-            this.data.imagenes = this.data.imagenes || [];
             
         } finally {
             this.showLoading(false);
@@ -225,9 +218,6 @@ class CRUDSystem {
                 break;
             case 'empresa':
                 this.renderEmpresa();
-                break;
-            case 'galeria':
-                this.renderGaleria();
                 break;
         }
     }
@@ -420,40 +410,6 @@ class CRUDSystem {
                     </div>
                 </td>
             </tr>
-        `).join('');
-    }
-
-    /**
-     * Renderizar galería de imágenes
-     */
-    renderGaleria() {
-        const gallery = document.getElementById('imageGallery');
-        if (!gallery) return;
-
-        if (this.data.imagenes.length === 0) {
-            gallery.innerHTML = `
-                <div class="col-span-full text-center py-12">
-                    <i class="fas fa-images text-6xl text-gray-300 mb-4 block"></i>
-                    <p class="text-gray-500">No hay imágenes en la galería</p>
-                </div>
-            `;
-            return;
-        }
-
-        gallery.innerHTML = this.data.imagenes.map(imagen => `
-            <div class="relative group">
-                <img src="${imagen.url}" alt="${imagen.nombre}" 
-                     class="w-full h-32 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow">
-                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all">
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onclick="crudSystem.deleteImage(${imagen.id})" 
-                                class="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full text-sm">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <p class="mt-2 text-sm text-gray-600 truncate">${imagen.nombre}</p>
-            </div>
         `).join('');
     }
 
@@ -882,85 +838,6 @@ class CRUDSystem {
                         </div>
                     </form>
                 `;
-        }
-    }
-
-    /**
-     * Configurar upload de imágenes
-     */
-    setupImageUpload() {
-        const uploadArea = document.getElementById('uploadArea');
-        const imageInput = document.getElementById('imageInput');
-
-        // Drag and drop functionality
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => {
-                uploadArea.classList.add('border-blue-400', 'bg-blue-50');
-            });
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => {
-                uploadArea.classList.remove('border-blue-400', 'bg-blue-50');
-            });
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            const files = Array.from(e.dataTransfer.files);
-            this.handleImageFiles(files);
-        });
-
-        imageInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            this.handleImageFiles(files);
-        });
-    }
-
-    /**
-     * Manejar archivos de imagen
-     */
-    handleImageFiles(files) {
-        const validFiles = files.filter(file => file.type.startsWith('image/'));
-        
-        if (validFiles.length === 0) {
-            this.showError('Por favor selecciona solo archivos de imagen');
-            return;
-        }
-
-        validFiles.forEach(file => this.uploadImage(file));
-    }
-
-    /**
-     * Subir imagen
-     */
-    async uploadImage(file) {
-        try {
-            // Create preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const imageData = {
-                    id: Date.now() + Math.random(),
-                    nombre: file.name,
-                    url: e.target.result,
-                    fecha: new Date().toISOString(),
-                    tamano: file.size
-                };
-
-                this.data.imagenes.push(imageData);
-                this.renderGaleria();
-                this.showSuccess('Imagen agregada correctamente');
-            };
-            reader.readAsDataURL(file);
-        } catch (error) {
-            console.error('Error al subir imagen:', error);
-            this.showError('Error al procesar la imagen');
         }
     }
 
@@ -1395,20 +1272,6 @@ class CRUDSystem {
             this.showError('No se pudo cambiar el estado del técnico');
         } finally {
             this.showLoading(false);
-        }
-    }
-
-    /**
-     * Eliminar imagen
-     */
-    deleteImage(id) {
-        if (!confirm('¿Eliminar esta imagen?')) return;
-        
-        const index = this.data.imagenes.findIndex(img => img.id === id);
-        if (index !== -1) {
-            this.data.imagenes.splice(index, 1);
-            this.renderGaleria();
-            this.showSuccess('Imagen eliminada');
         }
     }
 

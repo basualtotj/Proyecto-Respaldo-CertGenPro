@@ -1,21 +1,17 @@
 <?php
+// BLOQUE DE AUTENTICACIÓN MÍNIMO
 session_start();
-
-// Verificación de seguridad - Solo usuarios autenticados
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['rol'])) {
+if (!isset($_SESSION['user_id'])) {
     header('Location: login.html');
     exit;
 }
-
-$user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
-$user_role = $_SESSION['rol'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Certificados - Generador</title>
+    <title>Sistema de Certificados - Inicio</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?v=3.4.0"></script>

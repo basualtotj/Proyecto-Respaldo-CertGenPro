@@ -112,6 +112,9 @@ class DataService {
                 
                 // Parse robusto: primero texto, luego JSON
                 const raw = await response.text();
+                console.log('🔍 DEBUG: Raw response:', raw.substring(0, 200));
+                console.log('🔍 DEBUG: Content-Type:', response.headers.get('content-type'));
+                
                 const ct = response.headers.get('content-type') || '';
                 if (ct.includes('application/json')) {
                     try {
@@ -119,6 +122,8 @@ class DataService {
                         console.log('✅ API Response:', result);
                         return result.data || result;
                     } catch (e) {
+                        console.error('❌ DEBUG: Error parsing JSON:', e);
+                        console.error('❌ DEBUG: Raw content causing error:', raw);
                         // Si es POST/PUT y ya está ok, NO reintentes para evitar duplicados
                         if (method === 'POST' || method === 'PUT') {
                             console.warn('⚠️ Respuesta OK pero no es JSON válido. No reintento para evitar duplicados.');
@@ -413,10 +418,28 @@ class DataService {
         try {
             if (this.mode === 'api') {
                 console.log('➕ Creando técnico desde API...', tecnicoData);
-                // Normalizar firma digital si viene como File/Blob/Array
-                if ('firma_digital' in tecnicoData && typeof tecnicoData.firma_digital !== 'string') {
-                    delete tecnicoData.firma_digital;
+                console.log('🔍 DEBUG: Tipos de campos:', {
+                    firma_digital: typeof tecnicoData.firma_digital,
+                    certificaciones: typeof tecnicoData.certificaciones,
+                    firma_value: tecnicoData.firma_digital,
+                    cert_value: tecnicoData.certificaciones
+                });
+                
+                // Normalizar firma digital si viene como File/Blob/Array o está vacía
+                if ('firma_digital' in tecnicoData) {
+                    if (typeof tecnicoData.firma_digital !== 'string' || tecnicoData.firma_digital === '') {
+                        console.log('🔧 Eliminando firma_digital vacía o no-string');
+                        delete tecnicoData.firma_digital;
+                    }
                 }
+                
+                // Normalizar certificaciones vacías
+                if ('certificaciones' in tecnicoData && tecnicoData.certificaciones === '') {
+                    console.log('🔧 Eliminando certificaciones vacías');
+                    delete tecnicoData.certificaciones;
+                }
+                
+                console.log('📤 Datos finales a enviar:', tecnicoData);
                 const result = await this.apiCall('/tecnicos', 'POST', tecnicoData);
                 this.clearCache('tecnicos');
                 return result;
