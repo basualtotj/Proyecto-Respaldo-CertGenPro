@@ -1,0 +1,160 @@
+/* 
+ * ESTILOS CORPORATIVOS - REDES Y CCTV SPA
+ * Colores y estilos basados en certificate-generator.html
+ */
+
+/* Configuración de colores corporativos */
+:root {
+    /* Colores primarios */
+    --primary-50: #eff6ff;
+    --primary-100: #dbeafe;
+    --primary-500: #3b82f6;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
+    --primary-800: #1e40af;
+    --primary-900: #1e3a8a;
+    
+    /* Gradientes corporativos */
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-bg: linear-gradient(to-br, #eff6ff, #c7d2fe);
+    --gradient-text: linear-gradient(to right, #2563eb, #7c3aed);
+    
+    /* Efectos de vidrio */
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    
+    /* Colores de certificados por tipo */
+    --cctv-color: #3b82f6;      /* Azul */
+    --hardware-color: #059669;   /* Verde */
+    --racks-color: #7c3aed;     /* Morado */
+}
+
+/* Gradiente de fondo principal */
+.gradient-bg {
+    background: var(--gradient-primary);
+}
+
+.gradient-bg-page {
+    background: var(--gradient-bg);
+}
+
+/* Efectos de vidrio */
+.glass-morphism {
+    backdrop-filter: blur(20px);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+}
+
+.glass-effect {
+    backdrop-filter: blur(20px);
+    background: var(--glass-bg);
+}
+
+/* Texto con gradiente corporativo */
+.text-gradient {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Botones corporativos */
+.btn-primary {
+    background: var(--primary-600);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: var(--primary-700);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+}
+
+/* Tarjetas corporativas */
+.card-corporate {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Logo corporativo */
+.logo-corporate {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-600);
+    font-weight: 600;
+}
+
+/* Badges por tipo de certificado */
+.badge-cctv {
+    background: var(--cctv-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-hardware {
+    background: var(--hardware-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-racks {
+    background: var(--racks-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Animaciones */
+.floating-animation {
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+.pulse-button {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .8; }
+}
+
+/* Footer corporativo */
+.footer-corporate {
+    background: rgba(255, 255, 255, 0.5);
+    border-top: 1px solid rgba(229, 231, 235, 0.5);
+    padding: 2rem 0;
+}
+
+/* Navbar corporativo */
+.navbar-corporate {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+/* Íconos por tipo de servicio */
+.icon-cctv::before { content: '\f03d'; } /* fa-video */
+.icon-hardware::before { content: '\f108'; } /* fa-desktop */
+.icon-racks::before { content: '\f233'; } /* fa-server */

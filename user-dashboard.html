@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Panel - Sistema de Certificados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .status-pending { 
+            background-color: #fef3c7; 
+            color: #92400e; 
+            border-color: #fde68a; 
+        }
+        .status-approved { 
+            background-color: #d1fae5; 
+            color: #065f46; 
+            border-color: #a7f3d0; 
+        }
+        .status-rejected { 
+            background-color: #fee2e2; 
+            color: #991b1b; 
+            border-color: #fecaca; 
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <!-- Navbar -->
+    <nav class="glass-morphism border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-certificate text-white text-2xl mr-3"></i>
+                    <h1 class="text-white text-xl font-bold">Mi Panel</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <span class="text-white" id="username-display">Usuario</span>
+                    <div class="relative" id="dropdown-container">
+                        <button id="dropdown-btn" class="flex items-center text-white hover:text-gray-200 focus:outline-none">
+                            <i class="fas fa-user-circle text-2xl mr-2"></i>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div id="dropdown-menu" class="hidden absolute right-0 mt-2 w-48 glass-morphism rounded-md shadow-lg py-1">
+                            <a href="/validate.html" target="_blank" class="block px-4 py-2 text-sm text-white hover:bg-white hover:bg-opacity-20 transition-colors">
+                                <i class="fas fa-search mr-2"></i>Validar Certificado
+                            </a>
+                            <a href="#" onclick="logout()" class="block px-4 py-2 text-sm text-white hover:bg-white hover:bg-opacity-20 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Bienvenida -->
+        <div class="glass-morphism rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-white mb-2">¡Bienvenido!</h2>
+            <p class="text-white opacity-80">Aquí puedes solicitar nuevos certificados y revisar el estado de tus solicitudes.</p>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <button onclick="openNewCertificateModal()" class="glass-morphism rounded-lg p-6 hover-lift transition-all duration-300 text-left">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-500 bg-opacity-20 mr-4">
+                        <i class="fas fa-plus text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Solicitar Certificado</h3>
+                        <p class="text-sm text-white opacity-80">Crear una nueva solicitud de certificado</p>
+                    </div>
+                </div>
+            </button>
+            
+            <a href="/validate.html" target="_blank" class="glass-morphism rounded-lg p-6 hover-lift transition-all duration-300 text-left block">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-500 bg-opacity-20 mr-4">
+                        <i class="fas fa-search text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Validar Certificado</h3>
+                        <p class="text-sm text-white opacity-80">Verificar la autenticidad de un certificado</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Mis Solicitudes -->
+        <div class="glass-morphism rounded-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">
+                    <i class="fas fa-list mr-2"></i>Mis Solicitudes
+                </h2>
+                <button onclick="refreshMyCertificates()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            
+            <div id="my-certificates-container" class="space-y-3">
+                <div class="text-center text-white opacity-60 py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Cargando solicitudes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para nuevo certificado -->
+    <div id="new-certificate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="glass-morphism rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white">Solicitar Nuevo Certificado</h3>
+                <button onclick="closeNewCertificateModal()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="certificate-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-white mb-2">Nombre del Curso *</label>
+                    <input type="text" id="nombre_curso" required 
+                           class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-white mb-2">Nombre del Instructor *</label>
+                    <input type="text" id="nombre_instructor" required 
+                           class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-white mb-2">Duración (horas) *</label>
+                    <input type="number" id="duracion_horas" required min="1" max="1000"
+                           class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-white mb-2">Fecha de Finalización *</label>
+                    <input type="date" id="fecha_emision" required 
+                           class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-white mb-2">Observaciones</label>
+                    <textarea id="observaciones" rows="3" 
+                              class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Información adicional sobre el curso..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeNewCertificateModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentUser = null;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthentication();
+            loadMyCertificates();
+            setupEventListeners();
+        });
+
+        // Event listeners
+        function setupEventListeners() {
+            const dropdownBtn = document.getElementById('dropdown-btn');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            
+            dropdownBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                dropdownMenu.classList.toggle('hidden');
+            });
+            
+            document.addEventListener('click', function() {
+                dropdownMenu.classList.add('hidden');
+            });
+            
+            // Form submission
+            document.getElementById('certificate-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitCertificateRequest();
+            });
+        }
+
+        // Verificar autenticación
+        function checkAuthentication() {
+            fetch('/auth.php?action=check', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.authenticated) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                // Si es admin, redirigir al dashboard de admin
+                if (data.role === 'admin') {
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+                
+                currentUser = data.user;
+                document.getElementById('username-display').textContent = data.user.nombre || data.user.username;
+            })
+            .catch(error => {
+                console.error('Error verificando autenticación:', error);
+                window.location.href = 'login.html';
+            });
+        }
+
+        // Cargar mis certificados
+        function loadMyCertificates() {
+            const container = document.getElementById('my-certificates-container');
+            
+            fetch('/user-api.php?action=my_certificates')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.certificates) {
+                    if (data.certificates.length === 0) {
+                        container.innerHTML = `
+                            <div class="text-center text-white opacity-60 py-8">
+                                <i class="fas fa-certificate text-3xl mb-2"></i>
+                                <p>No tienes solicitudes de certificados</p>
+                                <button onclick="openNewCertificateModal()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                                    <i class="fas fa-plus mr-2"></i>Solicitar mi primer certificado
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = data.certificates.map(cert => `
+                            <div class="bg-white bg-opacity-10 rounded-lg p-4 border-l-4 ${getBorderColor(cert.estado || 'pending')}">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <h4 class="font-semibold text-white">${cert.nombre_curso}</h4>
+                                        <p class="text-sm text-white opacity-80">Instructor: ${cert.nombre_instructor}</p>
+                                        <p class="text-sm text-white opacity-80">Duración: ${cert.duracion_horas} horas</p>
+                                        <p class="text-xs text-white opacity-60 mt-1">
+                                            Solicitado: ${new Date(cert.fecha_emision).toLocaleDateString()}
+                                        </p>
+                                        ${cert.codigo_verificacion ? `<p class="text-xs text-white opacity-80 mt-1">Código: ${cert.codigo_verificacion}</p>` : ''}
+                                    </div>
+                                    <div class="flex flex-col items-end ml-4">
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium border ${getStatusClass(cert.estado || 'pending')}">
+                                            ${getStatusText(cert.estado || 'pending')}
+                                        </span>
+                                        ${cert.estado === 'approved' && cert.codigo_verificacion ? `
+                                            <button onclick="downloadCertificate('${cert.codigo_verificacion}')" 
+                                                    class="mt-2 px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 transition-colors">
+                                                <i class="fas fa-download mr-1"></i>Descargar
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center text-red-300 py-4">
+                            <i class="fas fa-exclamation-triangle text-xl mb-2"></i>
+                            <p>Error cargando solicitudes</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando certificados:', error);
+                container.innerHTML = `
+                    <div class="text-center text-red-300 py-4">
+                        <i class="fas fa-exclamation-triangle text-xl mb-2"></i>
+                        <p>Error de conexión</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Utilidades para estados
+        function getStatusClass(status) {
+            switch(status) {
+                case 'pending': return 'status-pending';
+                case 'approved': return 'status-approved';
+                case 'rejected': return 'status-rejected';
+                default: return 'bg-gray-100 text-gray-800 border-gray-200';
+            }
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'pending': return 'Pendiente';
+                case 'approved': return 'Aprobado';
+                case 'rejected': return 'Rechazado';
+                default: return 'Desconocido';
+            }
+        }
+
+        function getBorderColor(status) {
+            switch(status) {
+                case 'pending': return 'border-yellow-500';
+                case 'approved': return 'border-green-500';
+                case 'rejected': return 'border-red-500';
+                default: return 'border-gray-500';
+            }
+        }
+
+        // Modal para nuevo certificado
+        function openNewCertificateModal() {
+            document.getElementById('new-certificate-modal').classList.remove('hidden');
+            // Establecer fecha de hoy como máximo
+            document.getElementById('fecha_emision').max = new Date().toISOString().split('T')[0];
+        }
+
+        function closeNewCertificateModal() {
+            document.getElementById('new-certificate-modal').classList.add('hidden');
+            document.getElementById('certificate-form').reset();
+        }
+
+        function submitCertificateRequest() {
+            const formData = {
+                nombre_curso: document.getElementById('nombre_curso').value,
+                nombre_instructor: document.getElementById('nombre_instructor').value,
+                duracion_horas: document.getElementById('duracion_horas').value,
+                fecha_emision: document.getElementById('fecha_emision').value,
+                observaciones: document.getElementById('observaciones').value
+            };
+            
+            fetch('/user-api.php?action=create_certificate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeNewCertificateModal();
+                    refreshMyCertificates();
+                    alert('Solicitud enviada exitosamente. Tu certificado está pendiente de aprobación.');
+                } else {
+                    alert('Error: ' + (data.message || 'No se pudo enviar la solicitud'));
+                }
+            })
+            .catch(error => {
+                console.error('Error enviando solicitud:', error);
+                alert('Error de conexión');
+            });
+        }
+
+        function refreshMyCertificates() {
+            loadMyCertificates();
+        }
+
+        function downloadCertificate(codigo) {
+            window.open(`/generate-pdf.php?code=${codigo}`, '_blank');
+        }
+
+        function logout() {
+            fetch('/auth.php?action=logout', {
+                method: 'POST',
+                credentials: 'same-origin'
+            })
+            .then(() => {
+                window.location.href = 'login.html';
+            })
+            .catch(() => {
+                window.location.href = 'login.html';
+            });
+        }
+
+        function downloadCertificate(code) {
+            window.open(`/generate-pdf.php?code=${code}`, '_blank');
+        }
+    </script>
+</body>
+</html>

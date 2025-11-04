@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Certificados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .status-pending { 
+            background-color: #fef3c7; 
+            color: #92400e; 
+            border-color: #fde68a; 
+        }
+        .status-approved { 
+            background-color: #d1fae5; 
+            color: #065f46; 
+            border-color: #a7f3d0; 
+        }
+        .status-rejected { 
+            background-color: #fee2e2; 
+            color: #991b1b; 
+            border-color: #fecaca; 
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <!-- Navbar -->
+    <nav class="glass-morphism border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-certificate text-white text-2xl mr-3"></i>
+                    <h1 class="text-white text-xl font-bold">Dashboard</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <span class="text-white" id="username-display">Admin</span>
+                    <div class="relative" id="dropdown-container">
+                        <button id="dropdown-btn" class="flex items-center text-white hover:text-gray-200 focus:outline-none">
+                            <i class="fas fa-user-circle text-2xl mr-2"></i>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div id="dropdown-menu" class="hidden absolute right-0 mt-2 w-48 glass-morphism rounded-md shadow-lg py-1">
+                            <a href="admin-panel.html" class="block px-4 py-2 text-sm text-white hover:bg-white hover:bg-opacity-20 transition-colors">
+                                <i class="fas fa-tools mr-2"></i>Panel Admin
+                            </a>
+                            <a href="admin-simple.php?action=list_all_certificates" target="_blank" class="block px-4 py-2 text-sm text-white hover:bg-white hover:bg-opacity-20 transition-colors">
+                                <i class="fas fa-certificate mr-2"></i>Ver Certificados
+                            </a>
+                            <a href="#" onclick="logout()" class="block px-4 py-2 text-sm text-white hover:bg-white hover:bg-opacity-20 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="glass-morphism rounded-lg p-6 hover-lift transition-all duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-500 bg-opacity-20">
+                        <i class="fas fa-certificate text-white text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-white opacity-80">Total Certificados</p>
+                        <p class="text-2xl font-bold text-white" id="total-certificates">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="glass-morphism rounded-lg p-6 hover-lift transition-all duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-500 bg-opacity-20">
+                        <i class="fas fa-clock text-white text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-white opacity-80">Por Aprobar</p>
+                        <p class="text-2xl font-bold text-white" id="pending-certificates">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="glass-morphism rounded-lg p-6 hover-lift transition-all duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-500 bg-opacity-20">
+                        <i class="fas fa-check-circle text-white text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-white opacity-80">Aprobados</p>
+                        <p class="text-2xl font-bold text-white" id="approved-certificates">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="glass-morphism rounded-lg p-6 hover-lift transition-all duration-300">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-500 bg-opacity-20">
+                        <i class="fas fa-users text-white text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-white opacity-80">Usuarios</p>
+                        <p class="text-2xl font-bold text-white" id="total-users">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Certificados por Aprobar -->
+            <div class="glass-morphism rounded-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        <i class="fas fa-clock mr-2"></i>Certificados por Aprobar
+                    </h2>
+                    <button onclick="refreshPendingCertificates()" class="text-white hover:text-gray-200">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                
+                <div id="pending-certificates-container" class="space-y-3">
+                    <div class="text-center text-white opacity-60 py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Cargando...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estadísticas por Mes -->
+            <div class="glass-morphism rounded-lg p-6">
+                <h2 class="text-xl font-bold text-white mb-6">
+                    <i class="fas fa-chart-line mr-2"></i>Certificados por Mes
+                </h2>
+                <canvas id="monthly-chart" class="w-full h-64"></canvas>
+            </div>
+        </div>
+
+        <!-- Actividad Reciente -->
+        <div class="mt-8 glass-morphism rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-6">
+                <i class="fas fa-history mr-2"></i>Actividad Reciente
+            </h2>
+            <div id="recent-activity" class="space-y-3">
+                <div class="text-center text-white opacity-60 py-4">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p>Cargando actividad...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para aprobar/rechazar certificados -->
+    <div id="certificate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="glass-morphism rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Revisar Certificado</h3>
+                <button onclick="closeCertificateModal()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div id="certificate-details" class="text-white mb-6">
+                <!-- Detalles del certificado se cargarán aquí -->
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeCertificateModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                    Cancelar
+                </button>
+                <button onclick="rejectCertificate()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">
+                    <i class="fas fa-times mr-2"></i>Rechazar
+                </button>
+                <button onclick="approveCertificate()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                    <i class="fas fa-check mr-2"></i>Aprobar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentCertificateId = null;
+        let monthlyChart = null;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthentication();
+            loadDashboardData();
+            setupEventListeners();
+            initializeChart();
+        });
+
+        // Event listeners
+        function setupEventListeners() {
+            const dropdownBtn = document.getElementById('dropdown-btn');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            
+            dropdownBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                dropdownMenu.classList.toggle('hidden');
+            });
+            
+            document.addEventListener('click', function() {
+                dropdownMenu.classList.add('hidden');
+            });
+        }
+
+        // Verificar autenticación
+        function checkAuthentication() {
+            fetch('/auth.php?action=check', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.authenticated || data.role !== 'admin') {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                document.getElementById('username-display').textContent = data.username || 'Admin';
+            })
+            .catch(error => {
+                console.error('Error verificando autenticación:', error);
+                window.location.href = 'login.html';
+            });
+        }
+
+        // Cargar datos del dashboard
+        function loadDashboardData() {
+            loadStats();
+            loadPendingCertificates();
+            loadRecentActivity();
+            loadMonthlyStats();
+        }
+
+        // Cargar estadísticas
+        function loadStats() {
+            fetch('admin-simple.php?action=dashboard_stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('total-certificates').textContent = data.stats.total_certificates || 0;
+                    document.getElementById('pending-certificates').textContent = data.stats.pending_certificates || 0;
+                    document.getElementById('approved-certificates').textContent = data.stats.approved_certificates || 0;
+                    document.getElementById('total-users').textContent = data.stats.total_users || 0;
+                }
+            })
+            .catch(error => console.error('Error cargando estadísticas:', error));
+        }
+
+        // Cargar certificados pendientes
+        function loadPendingCertificates() {
+            const container = document.getElementById('pending-certificates-container');
+            
+            fetch('admin-simple.php?action=pending_certificates')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.certificates) {
+                    if (data.certificates.length === 0) {
+                        container.innerHTML = `
+                            <div class="text-center text-white opacity-60 py-8">
+                                <i class="fas fa-check-circle text-3xl mb-2"></i>
+                                <p>No hay certificados pendientes</p>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = data.certificates.map(cert => `
+                            <div class="bg-white bg-opacity-10 rounded-lg p-4 border-l-4 border-yellow-500">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <h4 class="font-semibold text-white">${cert.nombre_completo}</h4>
+                                        <p class="text-sm text-white opacity-80">${cert.nombre_curso}</p>
+                                        <p class="text-xs text-white opacity-60 mt-1">
+                                            Creado: ${new Date(cert.fecha_emision).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <div class="flex space-x-2 ml-4">
+                                        <button onclick="viewCertificate(${cert.id})" 
+                                                class="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors">
+                                            <i class="fas fa-eye mr-1"></i>Ver
+                                        </button>
+                                        <button onclick="downloadCertificatePdf('${cert.codigo_verificacion}')" 
+                                                class="px-3 py-1 bg-purple-500 text-white rounded text-xs hover:bg-purple-600 transition-colors">
+                                            <i class="fas fa-download mr-1"></i>PDF
+                                        </button>
+                                        <button onclick="openCertificateModal(${cert.id})" 
+                                                class="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 transition-colors">
+                                            <i class="fas fa-check mr-1"></i>Revisar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center text-red-300 py-4">
+                            <i class="fas fa-exclamation-triangle text-xl mb-2"></i>
+                            <p>Error cargando certificados pendientes</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando certificados pendientes:', error);
+                container.innerHTML = `
+                    <div class="text-center text-red-300 py-4">
+                        <i class="fas fa-exclamation-triangle text-xl mb-2"></i>
+                        <p>Error de conexión</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Cargar actividad reciente
+        function loadRecentActivity() {
+            const container = document.getElementById('recent-activity');
+            
+            fetch('admin-simple.php?action=recent_activity')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.activities) {
+                    if (data.activities.length === 0) {
+                        container.innerHTML = `
+                            <div class="text-center text-white opacity-60 py-4">
+                                <p>No hay actividad reciente</p>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = data.activities.map(activity => `
+                            <div class="flex items-center p-3 bg-white bg-opacity-5 rounded-lg">
+                                <div class="flex-1">
+                                    <p class="text-white text-sm">${activity.description}</p>
+                                    <p class="text-xs text-white opacity-60 mt-1">${activity.timestamp}</p>
+                                </div>
+                                <div class="ml-4">
+                                    <span class="px-2 py-1 rounded-full text-xs ${getStatusClass(activity.status)}">
+                                        ${activity.status}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            })
+            .catch(error => console.error('Error cargando actividad reciente:', error));
+        }
+
+        // Cargar estadísticas mensuales
+        function loadMonthlyStats() {
+            fetch('admin-simple.php?action=monthly_stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.stats) {
+                    updateChart(data.stats);
+                }
+            })
+            .catch(error => console.error('Error cargando estadísticas mensuales:', error));
+        }
+
+        // Inicializar gráfico
+        function initializeChart() {
+            const ctx = document.getElementById('monthly-chart').getContext('2d');
+            monthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Certificados Creados',
+                        data: [],
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: { color: 'rgba(255, 255, 255, 0.8)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: 'rgba(255, 255, 255, 0.8)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: 'rgba(255, 255, 255, 0.8)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Actualizar gráfico
+        function updateChart(data) {
+            if (monthlyChart && data) {
+                monthlyChart.data.labels = data.labels || [];
+                monthlyChart.data.datasets[0].data = data.values || [];
+                monthlyChart.update();
+            }
+        }
+
+        // Utilidades
+        function getStatusClass(status) {
+            switch(status) {
+                case 'pending': return 'status-pending';
+                case 'approved': return 'status-approved';
+                case 'rejected': return 'status-rejected';
+                default: return 'bg-gray-100 text-gray-800 border-gray-200';
+            }
+        }
+
+        function refreshPendingCertificates() {
+            loadPendingCertificates();
+            loadStats();
+        }
+
+        function viewCertificate(id) {
+            window.open(`/admin-simple.php?action=view_certificate&id=${id}`, '_blank');
+        }
+
+        function openCertificateModal(id) {
+            currentCertificateId = id;
+            
+            // Cargar detalles del certificado
+            fetch(`/admin-simple.php?action=certificate_details&id=${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.certificate) {
+                    const cert = data.certificate;
+                    document.getElementById('certificate-details').innerHTML = `
+                        <div class="space-y-3">
+                            <div><strong>Nombre:</strong> ${cert.nombre_completo}</div>
+                            <div><strong>Curso:</strong> ${cert.nombre_curso}</div>
+                            <div><strong>Instructor:</strong> ${cert.nombre_instructor}</div>
+                            <div><strong>Duración:</strong> ${cert.duracion_horas} horas</div>
+                            <div><strong>Fecha:</strong> ${new Date(cert.fecha_emision).toLocaleDateString()}</div>
+                            <div><strong>Código:</strong> ${cert.codigo_verificacion}</div>
+                        </div>
+                    `;
+                    document.getElementById('certificate-modal').classList.remove('hidden');
+                }
+            });
+        }
+
+        function closeCertificateModal() {
+            document.getElementById('certificate-modal').classList.add('hidden');
+            currentCertificateId = null;
+        }
+
+        function approveCertificate() {
+            if (!currentCertificateId) return;
+            
+            fetch('admin-simple.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'approve_certificate',
+                    id: currentCertificateId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeCertificateModal();
+                    refreshPendingCertificates();
+                    alert('Certificado aprobado exitosamente');
+                } else {
+                    alert('Error: ' + (data.message || 'No se pudo aprobar el certificado'));
+                }
+            })
+            .catch(error => {
+                console.error('Error aprobando certificado:', error);
+                alert('Error de conexión');
+            });
+        }
+
+        function rejectCertificate() {
+            if (!currentCertificateId) return;
+            
+            const reason = prompt('Razón del rechazo (opcional):');
+            
+            fetch('admin-simple.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'reject_certificate',
+                    id: currentCertificateId,
+                    reason: reason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeCertificateModal();
+                    refreshPendingCertificates();
+                    alert('Certificado rechazado');
+                } else {
+                    alert('Error: ' + (data.message || 'No se pudo rechazar el certificado'));
+                }
+            })
+            .catch(error => {
+                console.error('Error rechazando certificado:', error);
+                alert('Error de conexión');
+            });
+        }
+
+        function logout() {
+            fetch('/auth.php?action=logout', {
+                method: 'POST',
+                credentials: 'same-origin'
+            })
+            .then(() => {
+                window.location.href = 'login.html';
+            })
+            .catch(() => {
+                window.location.href = 'login.html';
+            });
+        }
+
+        function downloadCertificatePdf(code) {
+            window.open(`/generate-pdf.php?code=${code}`, '_blank');
+        }
+    </script>
+</body>
+</html>

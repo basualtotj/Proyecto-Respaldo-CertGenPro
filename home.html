@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Certificados - Inicio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-option {
+            transition: all 0.3s ease;
+        }
+        
+        .card-option:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-4xl w-full">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <div class="glass-morphism rounded-2xl p-8 mb-8">
+                    <i class="fas fa-certificate text-white text-6xl mb-4"></i>
+                    <h1 class="text-4xl font-bold text-white mb-2">Sistema de Certificados</h1>
+                    <p class="text-white opacity-80 text-lg">Gestión completa de certificados de cursos con validación pública</p>
+                </div>
+            </div>
+
+            <!-- Options Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Admin Panel -->
+                <div class="card-option">
+                    <a href="/login.html" class="block glass-morphism rounded-xl p-6 text-center text-white hover:text-white no-underline">
+                        <div class="mb-4">
+                            <i class="fas fa-user-shield text-4xl text-blue-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Panel de Administración</h3>
+                        <p class="opacity-80 text-sm">Gestionar usuarios y aprobar certificados</p>
+                        <div class="mt-4 text-xs opacity-60">
+                            <i class="fas fa-lock mr-1"></i>Requiere autenticación de admin
+                        </div>
+                    </a>
+                </div>
+
+                <!-- User Dashboard -->
+                <div class="card-option">
+                    <a href="/login.html" class="block glass-morphism rounded-xl p-6 text-center text-white hover:text-white no-underline">
+                        <div class="mb-4">
+                            <i class="fas fa-user-graduate text-4xl text-green-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Panel de Usuario</h3>
+                        <p class="opacity-80 text-sm">Solicitar y gestionar mis certificados</p>
+                        <div class="mt-4 text-xs opacity-60">
+                            <i class="fas fa-lock mr-1"></i>Requiere autenticación de usuario
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Certificate Validation -->
+                <div class="card-option">
+                    <a href="/validate.html" class="block glass-morphism rounded-xl p-6 text-center text-white hover:text-white no-underline">
+                        <div class="mb-4">
+                            <i class="fas fa-search text-4xl text-yellow-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Validar Certificado</h3>
+                        <p class="opacity-80 text-sm">Verificar la autenticidad de un certificado</p>
+                        <div class="mt-4 text-xs opacity-60">
+                            <i class="fas fa-globe mr-1"></i>Acceso público - Sin login
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Legacy Generator -->
+                <div class="card-option md:col-span-2 lg:col-span-3">
+                    <a href="/certificate-generator.html" class="block glass-morphism rounded-xl p-6 text-center text-white hover:text-white no-underline">
+                        <div class="mb-4">
+                            <i class="fas fa-wrench text-4xl text-orange-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Generador de Certificados de Mantenimiento</h3>
+                        <p class="opacity-80 text-sm">Herramienta original para certificados de mantenimiento técnico (CCTV, Hardware, Racks)</p>
+                        <div class="mt-4 text-xs opacity-60">
+                            <i class="fas fa-tools mr-1"></i>Sistema independiente
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- System Features -->
+            <div class="mt-12">
+                <div class="glass-morphism rounded-2xl p-6">
+                    <h2 class="text-2xl font-bold text-white text-center mb-6">Características del Sistema</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="text-center text-white">
+                            <i class="fas fa-shield-alt text-2xl text-blue-300 mb-2"></i>
+                            <h4 class="font-semibold mb-1">Autenticación Segura</h4>
+                            <p class="text-xs opacity-80">Sistema de roles admin/usuario con sesiones cifradas</p>
+                        </div>
+                        <div class="text-center text-white">
+                            <i class="fas fa-check-double text-2xl text-green-300 mb-2"></i>
+                            <h4 class="font-semibold mb-1">Validación Pública</h4>
+                            <p class="text-xs opacity-80">Verificación de certificados sin necesidad de login</p>
+                        </div>
+                        <div class="text-center text-white">
+                            <i class="fas fa-file-pdf text-2xl text-red-300 mb-2"></i>
+                            <h4 class="font-semibold mb-1">Descarga PDF</h4>
+                            <p class="text-xs opacity-80">Generación automática de certificados en formato PDF</p>
+                        </div>
+                        <div class="text-center text-white">
+                            <i class="fas fa-mobile-alt text-2xl text-purple-300 mb-2"></i>
+                            <h4 class="font-semibold mb-1">Responsive</h4>
+                            <p class="text-xs opacity-80">Optimizado para móviles, tablets y escritorio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflow Info -->
+            <div class="mt-8">
+                <div class="glass-morphism rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-white text-center mb-4">
+                        <i class="fas fa-route mr-2"></i>Flujo de Trabajo
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-white text-sm">
+                        <div class="text-center">
+                            <div class="bg-white bg-opacity-20 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                                <span class="font-bold">1</span>
+                            </div>
+                            <p class="font-semibold">Solicitud</p>
+                            <p class="opacity-80 text-xs">Usuario crea solicitud de certificado</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="bg-white bg-opacity-20 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                                <span class="font-bold">2</span>
+                            </div>
+                            <p class="font-semibold">Aprobación</p>
+                            <p class="opacity-80 text-xs">Administrador revisa y aprueba</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="bg-white bg-opacity-20 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                                <span class="font-bold">3</span>
+                            </div>
+                            <p class="font-semibold">Validación</p>
+                            <p class="opacity-80 text-xs">Acceso público para verificar autenticidad</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center mt-8">
+                <p class="text-white opacity-60 text-sm">
+                    © 2025 Sistema de Certificados - Desarrollado con PHP, MySQL y Tailwind CSS
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar si hay sesión activa y mostrar acceso rápido
+        fetch('/auth.php?action=check')
+            .then(response => response.json())
+            .then(data => {
+                if (data.authenticated) {
+                    if (data.user.role === 'admin') {
+                        addQuickAccessBanner('dashboard.html', 'Panel de Administración', 'fas fa-user-shield');
+                    } else {
+                        addQuickAccessBanner('user-dashboard.html', 'Mi Panel', 'fas fa-user-graduate');
+                    }
+                }
+            })
+            .catch(() => {
+                // No hay sesión activa, continuar normalmente
+            });
+
+        function addQuickAccessBanner(url, title, icon) {
+            const banner = document.createElement('div');
+            banner.className = 'fixed top-4 right-4 glass-morphism rounded-lg p-4 text-white shadow-lg z-50 max-w-xs';
+            banner.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="${icon} text-xl"></i>
+                        <div>
+                            <p class="text-sm font-semibold">Sesión activa</p>
+                            <p class="text-xs opacity-80">${title}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <a href="/${url}" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded text-xs transition-colors">
+                            Ir
+                        </a>
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="bg-white bg-opacity-10 hover:bg-opacity-20 px-2 py-1 rounded text-xs transition-colors">
+                            ×
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(banner);
+            
+            // Auto-hide después de 8 segundos
+            setTimeout(() => {
+                if (banner.parentElement) {
+                    banner.style.transition = 'opacity 0.5s ease';
+                    banner.style.opacity = '0';
+                    setTimeout(() => {
+                        if (banner.parentElement) banner.remove();
+                    }, 500);
+                }
+            }, 8000);
+        }
+    </script>

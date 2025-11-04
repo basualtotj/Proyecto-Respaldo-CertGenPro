@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validar Certificado - Redes y CCTV Spa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- jsPDF para generación de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- CCTVPdfGenerator -->
+    <script src="/js/pdf/cctv-pdf.js"></script>
+    <style>
+        .glass-morphism {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);
+            min-height: 100vh;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .certificate-result {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .valid-certificate {
+            border-color: #48bb78;
+            background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+        }
+
+        .invalid-certificate {
+            border-color: #f56565;
+            background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+        }
+
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <!-- Header -->
+    <div class="bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg border-b border-gray-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center">
+                <div class="mx-auto mb-6 h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fas fa-network-wired text-white text-2xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold text-gray-900 mb-3">
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                        Validación
+                    </span>
+                    de Certificados
+                </h1>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Verifica la autenticidad de cualquier certificado emitido por nuestro sistema
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Formulario de búsqueda -->
+        <div class="search-container">
+            <div class="glass-morphism rounded-2xl p-8 mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-6 text-center">
+                    <i class="fas fa-search mr-2 text-blue-600"></i>Validar Certificado
+                </h2>
+                
+                <form id="validation-form" class="space-y-6">
+                    <div>
+                        <label for="certificate-code" class="block text-sm font-medium text-gray-700 mb-2">
+                            Código de Validación
+                        </label>
+                        <input type="text" 
+                               id="certificate-code" 
+                               name="certificate-code"
+                               placeholder="Ej: ABCD4515CA"
+                               class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-mono shadow-sm"
+                               maxlength="10"
+                               required>
+                        <p class="text-xs text-gray-600 mt-2 text-center">
+                            Ingresa el código de validación de 10 caracteres alfanuméricos
+                        </p>
+                    </div>
+                    
+                    <button type="submit" 
+                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 shadow-lg">
+                        <i class="fas fa-search mr-2"></i>Validar Certificado
+                    </button>
+                </form>
+            </div>
+        </div>
+
+
+
+        <!-- Resultado de la validación -->
+        <div id="validation-result" class="hidden">
+            <!-- El resultado se mostrará aquí -->
+        </div>
+
+        <!-- Información adicional -->
+        <div class="max-w-4xl mx-auto mt-12">
+            <div class="glass-morphism rounded-2xl p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-info-circle mr-2 text-blue-600"></i>¿Cómo validar un certificado?
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-700">
+                    <div class="text-center">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3 shadow-lg">
+                            <i class="fas fa-code text-xl text-white"></i>
+                        </div>
+                        <h4 class="font-semibold mb-2">1. Encuentra el código</h4>
+                        <p class="text-sm">Localiza el código de verificación de 10 caracteres en tu certificado</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3 shadow-lg">
+                            <i class="fas fa-search text-xl text-white"></i>
+                        </div>
+                        <h4 class="font-semibold mb-2">2. Ingresa el código</h4>
+                        <p class="text-sm">Escribe el código exactamente como aparece en el certificado</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3 shadow-lg">
+                            <i class="fas fa-check-circle text-xl text-white"></i>
+                        </div>
+                        <h4 class="font-semibold mb-2">3. Verifica</h4>
+                        <p class="text-sm">Obtén la información completa y el estado del certificado</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-12">
+            <p class="text-gray-600 text-sm">
+                Sistema de Validación de Certificados - Powered by Sistema de Certificados
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+        });
+
+        function testCode(code) {
+            document.getElementById('certificate-code').value = code;
+            validateCertificate();
+        }
+
+        function setupEventListeners() {
+            const form = document.getElementById('validation-form');
+            const codeInput = document.getElementById('certificate-code');
+            
+            // Auto uppercase y limitar caracteres
+            codeInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            });
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                validateCertificate();
+            });
+        }
+
+        function validateCertificate() {
+            const code = document.getElementById('certificate-code').value.trim();
+            const resultContainer = document.getElementById('validation-result');
+            
+            if (!code) {
+                showError('Por favor, ingresa un código de verificación');
+                return;
+            }
+            
+            if (code.length !== 10) {
+                showError('El código debe tener exactamente 10 caracteres');
+                return;
+            }
+            
+            // Mostrar loading
+            showLoading();
+            
+            fetch(`/validate-api.php?code=${encodeURIComponent(code)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.certificate) {
+                    showValidCertificate(data.certificate);
+                } else {
+                    showInvalidCertificate(data.message || 'Certificado no encontrado');
+                }
+            })
+            .catch(error => {
+                console.error('Error validating certificate:', error);
+                showError('Error de conexión. Por favor, intenta nuevamente.');
+            });
+        }
+
+        function showLoading() {
+            const resultContainer = document.getElementById('validation-result');
+            resultContainer.className = 'search-container';
+            resultContainer.innerHTML = `
+                <div class="glass-morphism rounded-lg p-8 text-center">
+                    <i class="fas fa-spinner fa-spin text-white text-3xl mb-4"></i>
+                    <p class="text-white text-lg">Validando certificado...</p>
+                </div>
+            `;
+            resultContainer.classList.remove('hidden');
+        }
+
+        function showValidCertificate(certificate) {
+            const resultContainer = document.getElementById('validation-result');
+            resultContainer.className = 'search-container';
+            
+            const statusText = getStatusText(certificate.estado);
+            const statusIcon = getStatusIcon(certificate.estado);
+            const statusClass = (certificate.estado && certificate.estado.toString().trim().toLowerCase() === 'emitido') ? 'valid-certificate' : 'certificate-result';
+            
+            // Actualizar logo si está disponible
+            updateHeaderLogo(certificate.empresa);
+            
+            resultContainer.innerHTML = `
+                <div class="certificate-result ${statusClass}">
+                    <div class="text-center mb-6">
+                        <i class="${statusIcon} text-4xl mb-3"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Certificado de Mantenimiento Válido</h3>
+                        <span class="inline-block px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(certificate.estado)}">
+                            ${statusText}
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-700 mb-3">Información del Certificado</h4>
+                            <div class="space-y-2 text-sm">
+                                <div><strong>Número:</strong> ${certificate.numero_certificado}</div>
+                                <div><strong>Código de Validación:</strong> <span class="font-mono">${certificate.codigo_validacion}</span></div>
+                                <div><strong>Tipo de Mantenimiento:</strong> ${certificate.tipo_mantenimiento}</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold text-gray-700 mb-3">Cliente e Instalación</h4>
+                            <div class="space-y-2 text-sm">
+                                <div><strong>Cliente:</strong> ${certificate.cliente.nombre}</div>
+                                <div><strong>Fecha de Emisión:</strong> ${formatDate(certificate.fecha_emision)}</div>
+                                <div><strong>Estado:</strong> ${certificate.estado.charAt(0).toUpperCase() + certificate.estado.slice(1)}</div>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <h4 class="font-semibold text-gray-700 mb-3">Técnico y Empresa</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2 text-sm">
+                                    <div><strong>Técnico:</strong> ${certificate.tecnico.nombre}</div>
+                                </div>
+                                <div class="space-y-2 text-sm">
+                                    <div><strong>Empresa:</strong> ${certificate.empresa.nombre}</div>
+                                </div>
+                            </div>
+                            
+                            ${certificate.estado === 'emitido' ? `
+                                <div class="mt-6 text-center">
+                                    <button onclick="downloadCertificate('${certificate.numero_certificado}')" 
+                                            class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-300 shadow-lg hover:shadow-xl">
+                                        <i class="fas fa-download mr-2"></i>
+                                        Descargar Certificado PDF
+                                    </button>
+                                    <p class="text-xs text-gray-600 mt-2">
+                                        Se generará el mismo PDF que el sistema de creación usando CCTVPdfGenerator
+                                    </p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            resultContainer.classList.remove('hidden');
+        }
+
+        function showInvalidCertificate(message) {
+            const resultContainer = document.getElementById('validation-result');
+            resultContainer.className = 'search-container';
+            resultContainer.innerHTML = `
+                <div class="certificate-result invalid-certificate">
+                    <div class="text-center">
+                        <i class="fas fa-times-circle text-red-500 text-4xl mb-4"></i>
+                        <h3 class="text-2xl font-bold text-red-800 mb-2">Certificado No Válido</h3>
+                        <p class="text-red-700 mb-4">${message}</p>
+                        
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+                            <h4 class="font-semibold text-red-800 mb-2">¿Qué puede significar esto?</h4>
+                            <ul class="text-sm text-red-700 text-left space-y-1">
+                                <li>• El código de validación no existe en nuestro sistema</li>
+                                <li>• El código fue ingresado incorrectamente</li>
+                                <li>• El certificado de mantenimiento no ha sido emitido</li>
+                                <li>• Verifica que el código tenga exactamente 10 caracteres</li>
+                            </ul>
+                        </div>
+                        
+                        <button onclick="clearValidation()" 
+                                class="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i>Intentar nuevamente
+                        </button>
+                    </div>
+                </div>
+            `;
+            resultContainer.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            const resultContainer = document.getElementById('validation-result');
+            resultContainer.className = 'search-container';
+            resultContainer.innerHTML = `
+                <div class="glass-morphism rounded-lg p-6 text-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-400 text-3xl mb-4"></i>
+                    <p class="text-white text-lg">${message}</p>
+                </div>
+            `;
+            resultContainer.classList.remove('hidden');
+        }
+
+        function getStatusText(status) {
+            const cleanStatus = status ? status.toString().trim().toLowerCase() : '';
+            switch(cleanStatus) {
+                case 'emitido': return 'Certificado Emitido';
+                case 'pendiente': return 'Pendiente de Emisión';
+                case 'cancelado': return 'Certificado Cancelado';
+                default: return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Estado Desconocido';
+            }
+        }
+
+        function getStatusIcon(status) {
+            const cleanStatus = status ? status.toString().trim().toLowerCase() : '';
+            switch(cleanStatus) {
+                case 'emitido': return 'fas fa-check-circle text-green-500';
+                case 'pendiente': return 'fas fa-clock text-yellow-500';
+                case 'cancelado': return 'fas fa-times-circle text-red-500';
+                default: return 'fas fa-question-circle text-gray-500';
+            }
+        }
+
+        function getStatusBadgeClass(status) {
+            const cleanStatus = status ? status.toString().trim().toLowerCase() : '';
+            switch(cleanStatus) {
+                case 'emitido': return 'bg-green-100 text-green-800';
+                case 'pendiente': return 'bg-yellow-100 text-yellow-800';
+                case 'cancelado': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'No disponible';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function clearValidation() {
+            document.getElementById('validation-result').classList.add('hidden');
+            document.getElementById('certificate-code').value = '';
+            document.getElementById('certificate-code').focus();
+        }
+
+        async function downloadCertificate(numeroCertificado) {
+            // Cambiar el botón para mostrar estado de descarga
+            const button = event.target.closest('button');
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Buscando PDF...';
+            button.disabled = true;
+            
+            try {
+                // Obtener el certificado completo con ID
+                const code = document.getElementById('certificate-code').value;
+                const response = await fetch(`/validate-api.php?code=${encodeURIComponent(code)}`);
+                const data = await response.json();
+                
+                if (!data.success || !data.certificate) {
+                    throw new Error('No se pudo obtener los datos del certificado');
+                }
+                
+                const certificate = data.certificate;
+                
+                // Buscar el certificado en la API para obtener el ID
+                button.innerHTML = '<i class="fas fa-search fa-spin mr-2"></i>Buscando archivo...';
+                
+                try {
+                    const searchResponse = await fetch(`/api/certificados`);
+                    const searchData = await searchResponse.json();
+                    const certificados = searchData.data || searchData; // Manejar ambos formatos
+                    
+                    // Buscar por número de certificado o código de validación
+                    const cert = certificados.find(c => 
+                        c.numero_certificado === certificate.numero_certificado || 
+                        c.codigo_validacion === certificate.codigo_validacion
+                    );
+                    
+                    if (cert && cert.id) {
+                        button.innerHTML = '<i class="fas fa-download fa-spin mr-2"></i>Descargando PDF...';
+                        
+                        // Intentar descarga directa del PDF almacenado (IGUAL QUE certificados.html)
+                        const pdfUrl = `/api/certificados/${cert.id}/pdf`;
+                        const pdfResponse = await fetch(pdfUrl, { method: 'GET' });
+                        
+                        if (pdfResponse.ok && pdfResponse.headers.get('content-type')?.includes('application/pdf')) {
+                            // Descargar el PDF original almacenado
+                            const blob = await pdfResponse.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${certificate.numero_certificado}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            URL.revokeObjectURL(url);
+                            
+                            button.innerHTML = '<i class="fas fa-check mr-2"></i>PDF Descargado';
+                            setTimeout(() => {
+                                button.innerHTML = originalContent;
+                                button.disabled = false;
+                            }, 2000);
+                            return;
+                        }
+                    }
+                } catch (searchError) {
+                    console.warn('Error al buscar el certificado:', searchError);
+                }
+                
+                // Si llegamos aquí, no se pudo encontrar el PDF original
+                throw new Error('PDF original no encontrado. El certificado puede haber sido creado antes de implementar el almacenamiento de PDFs.');
+                
+            } catch (error) {
+                console.error('Error al descargar certificado:', error);
+                button.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Error en descarga';
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.disabled = false;
+                }, 3000);
+            }
+        }
+
+        // Función para actualizar el logo dinámicamente si está disponible
+        function updateHeaderLogo(empresa) {
+            const logoContainer = document.querySelector('.mx-auto.mb-6.h-16.w-16');
+            if (empresa && empresa.logo_empresa && logoContainer) {
+                try {
+                    // Crear elemento de imagen
+                    const img = document.createElement('img');
+                    img.src = empresa.logo_empresa;
+                    img.alt = 'Logo de la empresa';
+                    img.className = 'w-full h-full object-contain rounded-full';
+                    img.onload = function() {
+                        // Reemplazar el icono con la imagen
+                        logoContainer.innerHTML = '';
+                        logoContainer.appendChild(img);
+                        logoContainer.classList.remove('bg-blue-600');
+                        logoContainer.classList.add('bg-white', 'border-2', 'border-blue-200');
+                    };
+                    img.onerror = function() {
+                        // Si falla la carga, mantener el icono original
+                        console.log('No se pudo cargar el logo de la empresa');
+                    };
+                } catch (error) {
+                    console.log('Error al procesar el logo:', error);
+                }
+            }
+        }
+
+        // Auto-focus en el campo de código
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('certificate-code').focus();
+        });
+    </script>
+</body>
+</html>

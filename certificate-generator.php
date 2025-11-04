@@ -1,0 +1,497 @@
+<?php
+session_start();
+
+// Verificación de seguridad - Solo usuarios autenticados
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['rol'])) {
+    header('Location: login.html');
+    exit;
+}
+
+$user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
+$user_role = $_SESSION['rol'];
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Certificados - Generador</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?v=3.4.0"></script>
+    
+    <!-- Configuración personalizada de Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    },
+                    fontFamily: {
+                        'elegant': ['Georgia', 'Times New Roman', 'serif'],
+                        'modern': ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- jsPDF para generación de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- html2canvas para captura de pantalla -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Componente de navegación global -->
+    <script src="js/components/navbar.js"></script>
+    
+    <!-- Sistema de Autenticación -->
+    <script src="js/auth-guard.js"></script>
+    
+    <!-- Estilos personalizados -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .certificate-preview {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: perspective(1000px) rotateX(5deg);
+            transition: all 0.3s ease;
+        }
+        
+        .certificate-preview:hover {
+            transform: perspective(1000px) rotateX(0deg) translateY(-10px);
+        }
+        
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .pulse-button {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .8; }
+        }
+        
+        /* Estilos de plantillas */
+        .template-classic {
+            background: linear-gradient(45deg, #f8fafc 0%, #ffffff 100%);
+            border: 8px solid #1e40af;
+        }
+        
+        .template-modern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .template-elegant {
+            background: #1f2937;
+            color: #f9fafb;
+            border-top: 6px solid #f59e0b;
+        }
+        
+        .template-luxury {
+            background: linear-gradient(45deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            border: 3px solid #fbbf24;
+        }
+        
+        .template-corporate {
+            background: #ffffff;
+            border-left: 12px solid #059669;
+        }
+
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-6">
+        
+        <!-- Hero Section -->
+        <div class="text-center mb-12">
+            <h2 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+                Sistema de Certificados
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                    de Mantenimiento
+                </span>
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Genera certificados profesionales de mantenimiento para sistemas CCTV, 
+                Hardware Computacional y Racks de Comunicaciones.
+            </p>
+        </div>
+
+        <!-- Selector de Tipo de Certificado -->
+        <div class="mb-8">
+            <div class="glass-effect rounded-2xl p-6 shadow-xl border border-white/50">
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-semibold text-gray-900 mb-2">
+                        <i class="fas fa-clipboard-list text-blue-600 mr-2"></i>
+                        Seleccionar Tipo de Certificado
+                    </h3>
+                    <p class="text-gray-600">Elige el tipo de mantenimiento a certificar</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                    <button type="button" class="certificate-type-btn bg-blue-50 border-2 border-blue-500 rounded-xl p-6 hover:bg-blue-100 transition-all focus:outline-none focus:ring-4 focus:ring-blue-200" data-type="cctv">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-video text-white text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Sistemas CCTV</h4>
+                            <p class="text-sm text-gray-600">Cámaras, DVR/NVR, Monitores</p>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="certificate-type-btn border-2 border-gray-200 rounded-xl p-6 hover:bg-gray-50 transition-all focus:outline-none focus:ring-4 focus:ring-gray-200" data-type="hardware">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-desktop text-white text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Hardware Computacional</h4>
+                            <p class="text-sm text-gray-600">Servidores, PCs, Componentes</p>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="certificate-type-btn border-2 border-gray-200 rounded-xl p-6 hover:bg-gray-50 transition-all focus:outline-none focus:ring-4 focus:ring-gray-200" data-type="racks">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-server text-white text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-2">Racks de Comunicaciones</h4>
+                            <p class="text-sm text-gray-600">Switches, Routers, Cableado</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid Layout -->
+    <div class="grid grid-cols-1 gap-8">
+            
+            <!-- Formulario -->
+            <div>
+                <div id="mainForm" class="glass-effect rounded-2xl p-8 shadow-xl border border-white/50 hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-edit text-blue-600 text-xl"></i>
+                            <h3 id="formTitle" class="text-2xl font-semibold text-gray-900">Certificado de Mantenimiento</h3>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <label for="fechaMantenimiento" class="flex items-center text-sm text-gray-700">
+                                <i class="fas fa-calendar text-red-500 mr-2"></i>
+                                Fecha Mantenimiento
+                            </label>
+                            <input type="date" id="fechaMantenimiento" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" required>
+                        </div>
+                    </div>
+                    
+                    <form id="certificateForm" class="space-y-6">
+                        
+                        <!-- Selección de Cliente / Sucursal / Técnico -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="clienteSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-building text-blue-500 mr-2"></i>
+                                    Cliente
+                                </label>
+                                <select id="clienteSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" required>
+                                    <option value="">Seleccionar cliente...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="instalacionSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>
+                                    Sucursal
+                                </label>
+                                <select id="instalacionSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" required disabled>
+                                    <option value="">Primero selecciona un cliente</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="tecnicoSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-user-cog text-purple-500 mr-2"></i>
+                                    Técnico Responsable
+                                </label>
+                                <select id="tecnicoSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" required>
+                                    <option value="">Seleccionar técnico...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Acciones rápidas sobre la selección -->
+                        <div class="flex justify-end mt-2">
+                            <button type="button" id="loadLastBtn" class="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-800">
+                                <i class="fas fa-history mr-2"></i>
+                                Cargar último para esta instalación
+                            </button>
+                        </div>
+
+                        <!-- Información del Mantenimiento (compactada en cabecera) -->
+
+                        <!-- Formulario Específico CCTV -->
+                        <div id="cctvForm" class="hidden">
+                            <div class="border-t border-gray-200 pt-6">
+                                <h4 class="text-lg font-semibold text-gray-900 mb-4">
+                                    <i class="fas fa-video text-blue-600 mr-2"></i>
+                                    Equipos Instalados
+                                </h4>
+                                
+                                <!-- Equipos Instalados (todo en una línea responsive) -->
+                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                                    <div>
+                                        <label for="camarasIP" class="block text-sm font-medium text-gray-700 mb-1">Cámaras IP</label>
+                                        <input type="number" id="camarasIP" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="camarasAnalogicas" class="block text-sm font-medium text-gray-700 mb-1">Cámaras Analógicas</label>
+                                        <input type="number" id="camarasAnalogicas" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="monitores" class="block text-sm font-medium text-gray-700 mb-1">Monitores</label>
+                                        <input type="number" id="monitores" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="nvr" class="block text-sm font-medium text-gray-700 mb-1">NVR</label>
+                                        <input type="text" id="nvr" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Marca y modelo">
+                                    </div>
+                                    <div>
+                                        <label for="dvr" class="block text-sm font-medium text-gray-700 mb-1">DVR</label>
+                                        <input type="text" id="dvr" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Marca y modelo">
+                                    </div>
+                                    <div>
+                                        <label for="joystick" class="block text-sm font-medium text-gray-700 mb-1">Joystick</label>
+                                        <input type="text" id="joystick" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Control PTZ u otros">
+                                    </div>
+                                </div>
+
+                                <!-- Checklist de Mantenimiento CCTV -->
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="text-md font-semibold text-gray-900">Verificación Realizada</h5>
+                                    <button type="button" id="markAllChecklistBtn" class="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center">
+                                        <i class="fas fa-check-double mr-1"></i>
+                                        Marcar todos
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="grabaciones">
+                                        <span class="text-sm text-gray-700">Grabaciones</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="limpieza_camaras">
+                                        <span class="text-sm text-gray-700">Limpieza de cámaras</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="fecha_hora">
+                                        <span class="text-sm text-gray-700">Fecha y hora</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="enfoques">
+                                        <span class="text-sm text-gray-700">Enfoques</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="configuraciones">
+                                        <span class="text-sm text-gray-700">Configuraciones</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="filtros">
+                                        <span class="text-sm text-gray-700">Filtros</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="revision_cables">
+                                        <span class="text-sm text-gray-700">Revisión de cables y conectores</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" class="mr-3 text-blue-600 focus:ring-blue-500" name="cctvCheck" value="revision_almacenamiento">
+                                        <span class="text-sm text-gray-700">Revisión de almacenamiento</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario Hardware (placeholder) -->
+                        <div id="hardwareForm" class="hidden">
+                            <div class="border-t border-gray-200 pt-6">
+                                <h4 class="text-lg font-semibold text-gray-900 mb-4">
+                                    <i class="fas fa-desktop text-green-600 mr-2"></i>
+                                    Mantenimiento Hardware Computacional
+                                </h4>
+                                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Formulario específico para hardware en desarrollo
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Formulario Racks (placeholder) -->
+                        <div id="racksForm" class="hidden">
+                            <div class="border-t border-gray-200 pt-6">
+                                <h4 class="text-lg font-semibold text-gray-900 mb-4">
+                                    <i class="fas fa-server text-purple-600 mr-2"></i>
+                                    Mantenimiento Racks de Comunicaciones
+                                </h4>
+                                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Formulario específico para racks en desarrollo
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Solicitudes del Cliente -->
+                        <div>
+                            <label for="solicitudesCliente" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-list-ul text-purple-500 mr-2"></i>
+                                Solicitudes del Cliente
+                            </label>
+                            <textarea id="solicitudesCliente" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Ingrese las solicitudes específicas del cliente para esta mantención..."></textarea>
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div>
+                            <label for="observaciones" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-clipboard-check text-orange-500 mr-2"></i>
+                                Observaciones y Recomendaciones
+                            </label>
+                            <textarea id="observaciones" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Detalle las observaciones del mantenimiento y resultados específicos como respuesta a las solicitudes del cliente..."></textarea>
+                        </div>
+
+                        <!-- Firmas Digitales -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-signature text-indigo-500 mr-2"></i>
+                                    Firma del Técnico
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                    <input type="file" id="firmaTecnico" accept="image/png,image/jpg,image/jpeg" class="hidden">
+                                    <div id="firmaTecnicoPreview" class="hidden">
+                                        <img id="firmaTecnicoImg" class="max-h-20 mx-auto mb-2">
+                                        <button type="button" class="text-red-600 text-sm hover:text-red-800" style="display:none;">
+                                            <i class="fas fa-trash mr-1"></i>Eliminar
+                                        </button>
+                                    </div>
+                                    <div id="firmaTecnicoPlaceholder">
+                                        <i class="fas fa-signature text-gray-400 text-2xl mb-2"></i>
+                                        <p class="text-sm text-gray-600 mb-2">Firma cargada desde el CRUD de Técnicos</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-signature text-green-500 mr-2"></i>
+                                    Representante Empresa
+                                </label>
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                    <input type="file" id="firmaCliente" accept="image/png,image/jpg,image/jpeg" class="hidden">
+                                    <div id="firmaClientePreview" class="hidden">
+                                        <img id="firmaClienteImg" class="max-h-20 mx-auto mb-2">
+                                        <button type="button" class="text-red-600 text-sm hover:text-red-800" style="display:none;">
+                                            <i class="fas fa-trash mr-1"></i>Eliminar
+                                        </button>
+                                    </div>
+                                    <div id="firmaClientePlaceholder">
+                                        <i class="fas fa-signature text-gray-400 text-2xl mb-2"></i>
+                                        <p class="text-sm text-gray-600 mb-2">Firma cargada desde el CRUD de Empresa</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Evidencia Fotográfica -->
+                        <div class="mt-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-camera text-pink-500 mr-2"></i>
+                                Evidencia Fotográfica
+                            </label>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                <input type="file" id="evidenciaInput" accept="image/*" class="hidden" multiple>
+                                <div class="mb-4">
+                                    <i class="fas fa-images text-gray-400 text-2xl mb-2"></i>
+                                    <p class="text-sm text-gray-600">Agrega fotos como evidencia del servicio</p>
+                                    <button type="button" id="evidenciaAddBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors">
+                                        Agregar fotos
+                                    </button>
+                                </div>
+                                <div id="evidenciaGallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-left">
+                                    <!-- Thumbnails -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botón de Generar -->
+                        <button type="submit" id="generateBtn" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                            <i class="fas fa-file-pdf mr-2"></i>
+                            Generar Certificado PDF
+                        </button>
+                        
+                    </form>
+                </div>
+
+                <!-- Mensaje inicial -->
+                <div id="selectTypeMessage" class="glass-effect rounded-2xl p-8 shadow-xl border border-white/50 text-center">
+                    <div class="text-6xl text-gray-300 mb-4">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2">Selecciona un Tipo de Certificado</h3>
+                    <p class="text-gray-500">Elige el tipo de mantenimiento que deseas certificar para continuar</p>
+                </div>
+            </div>
+
+            <!-- Vista Previa eliminada -->
+            
+        </div>
+        
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-8 px-4 sm:px-6 lg:px-8 border-t border-gray-200 bg-white/50">
+        <div class="max-w-7xl mx-auto text-center">
+            <div class="flex items-center justify-center space-x-2 mb-2">
+                <i class="fas fa-network-wired text-blue-600"></i>
+                <span class="text-gray-600 font-medium">Redes y CCTV Spa</span>
+            </div>
+            <p class="text-sm text-gray-500">
+                Generador profesional de certificados | Compatible con WordPress, Apache y cualquier servidor web
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="js/data-service.js"></script>
+    <script src="js/pdf/cctv-pdf.js"></script>
+    <script src="js/maintenance-system.js"></script>
+    
+</body>
+</html>

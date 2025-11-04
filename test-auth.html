@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Autenticación Admin</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .status { 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+            font-weight: bold; 
+        }
+        .success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb; 
+        }
+        .error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        button:hover { 
+            background: #0056b3; 
+        }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto; 
+            border: 1px solid #e9ecef; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Test de Autenticación Admin</h1>
+        
+        <div class="actions">
+            <button onclick="loginAsAdmin()">Login como Admin</button>
+            <button onclick="loginAsUser()">Login como Usuario</button>
+            <button onclick="checkAuth()">Verificar Autenticación</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function loginAsAdmin() {
+            await login('admin', 'admin123', 'Admin');
+        }
+
+        async function loginAsUser() {
+            await login('usuario', 'usuario123', 'Usuario');
+        }
+
+        async function login(username, password, label) {
+            showStatus(`🔄 Intentando login como ${label}...`, 'info');
+            
+            try {
+                const response = await fetch('/login-handler.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        identifier: username,
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`✅ Login exitoso como ${label}`, 'success');
+                    showData('Datos del login:', result);
+                    
+                    // Verificar inmediatamente después del login
+                    setTimeout(checkAuth, 1000);
+                } else {
+                    showStatus(`❌ Error en login: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                showStatus(`💥 Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkAuth() {
+            showStatus('🔍 Verificando autenticación...', 'info');
+            
+            try {
+                const response = await fetch('/auth-check.php');
+                const result = await response.json();
+                
+                if (result.authenticated) {
+                    showStatus(`✅ Autenticado como: ${result.user.nombre} (${result.user.rol})`, 'success');
+                    showData('Datos del usuario:', result.user);
+                    
+                    // Test de acceso a páginas admin
+                    if (result.user.rol === 'admin') {
+                        showStatus('👑 Rol ADMIN detectado - Debería tener acceso completo', 'success');
+                    } else {
+                        showStatus('👤 Rol USUARIO detectado - Acceso limitado', 'info');
+                    }
+                } else {
+                    showStatus('❌ No autenticado', 'error');
+                    showData('Response completo:', result);
+                }
+                
+            } catch (error) {
+                showStatus(`💥 Error verificando auth: ${error.message}`, 'error');
+            }
+        }
+
+        async function logout() {
+            showStatus('🚪 Cerrando sesión...', 'info');
+            
+            try {
+                const response = await fetch('/logout.php', {
+                    method: 'POST'
+                });
+                
+                showStatus('✅ Sesión cerrada', 'success');
+                setTimeout(checkAuth, 1000);
+                
+            } catch (error) {
+                showStatus(`💥 Error en logout: ${error.message}`, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const result = document.getElementById('result');
+            const div = document.createElement('div');
+            div.className = `status ${type === 'success' ? 'success' : type === 'error' ? 'error' : ''}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            result.appendChild(div);
+            
+            // Scroll to bottom
+            result.scrollTop = result.scrollHeight;
+        }
+
+        function showData(title, data) {
+            const result = document.getElementById('result');
+            const div = document.createElement('div');
+            div.innerHTML = `<h3>${title}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            result.appendChild(div);
+        }
+
+        // Auto-check on load
+        window.onload = () => {
+            checkAuth();
+        };
+    </script>
+</body>
+</html>
