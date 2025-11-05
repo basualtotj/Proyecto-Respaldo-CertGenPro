@@ -1,0 +1,404 @@
+<?php
+session_start();
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.html");
+    exit();
+}
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Certificados - CertGen Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <!-- Componente de navegación global -->
+  <script src="js/components/navbar.js"></script>
+  <!-- PDF libs for in-page generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+
+  <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pt-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Repositorio de Certificados</h2>
+        <div class="flex gap-2">
+          <input id="searchCerts" type="text" placeholder="Buscar por código, cliente o sucursal" class="w-72 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+          <select id="filterTipo" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+            <option value="">Todos los sistemas</option>
+            <option value="cctv">CCTV</option>
+            <option value="hardware">Hardware</option>
+            <option value="racks">Racks</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="refreshBtn" class="px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-sm" title="Actualizar listado">
+        <i class="fas fa-rotate"></i>
+      </button>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-600 border-b">
+              <th class="py-2 pr-4">Código</th>
+              <th class="py-2 pr-4">Fecha</th>
+              <th class="py-2 pr-4">Cliente</th>
+              <th class="py-2 pr-4">Sucursal</th>
+              <th class="py-2 pr-4">Sistema</th>
+              <th class="py-2 pr-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="certsTableBody"></tbody>
+        </table>
+        <div id="emptyState" class="hidden text-center text-gray-500 py-8">No hay certificados aún.</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/data-service.js"></script>
+  <script>
+    const ds = new DataService();
+  let allItems = [];
+  let filtersBound = false;
+
+    // Robust date parsing for DB strings ("YYYY-MM-DD HH:mm:ss"), ISO strings, and epoch (ms or s)
+    function parseDateLike(input) {
+      if (!input && input !== 0) return null;
+      // Already a Date
+      if (input instanceof Date) return isNaN(input.getTime()) ? null : input;
+      // Numeric or numeric-like: epoch seconds or ms
+      if (typeof input === 'number' || (/^\d{10,13}$/.test(String(input)))) {
+        const n = Number(input);
+        const ms = String(input).length === 10 ? n * 1000 : n;
+        const d = new Date(ms);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      // String parsing
+      const s = String(input).trim();
+      if (!s) return null;
+      // Pattern: YYYY-MM-DD HH:mm:ss
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (m) {
+        const [_, Y, M, D, h = '00', i = '00', sec = '00'] = m;
+        // Interpret as local time to avoid TZ shifting the date
+        const d = new Date(
+          Number(Y),
+          Number(M) - 1,
+          Number(D),
+          Number(h),
+          Number(i),
+          Number(sec)
+        );
+        return isNaN(d.getTime()) ? null : d;
+      }
+      // ISO fallthrough
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function fmtDate(val) {
+      const d = parseDateLike(val);
+      return d ? d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+    }
+    function fmtDateLong(val) {
+      const d = parseDateLike(val);
+      return d ? d.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('certsTableBody');
+      const empty = document.getElementById('emptyState');
+      if (!items || !items.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      tbody.innerHTML = items.map(row => `
+        <tr class="border-b hover:bg-gray-50">
+          <td class="py-2 pr-4 font-mono">${row.numero_certificado || row.codigo || '-'}</td>
+          <td class="py-2 pr-4">${fmtDate(row.fecha_mantenimiento || row.fecha || row.fecha_emision || row.created_at)}</td>
+          <td class="py-2 pr-4">${row.cliente_nombre || row.cliente || '-'}</td>
+          <td class="py-2 pr-4">${row.instalacion_nombre || row.sucursal || '-'}</td>
+          <td class="py-2 pr-4 uppercase">${row.tipo || '-'}</td>
+          <td class="py-2 pr-4 text-right">
+            <button class="px-3 py-1 text-blue-700 hover:text-blue-900" data-dl="${row.id || ''}">
+              <i class="fas fa-download mr-1"></i>PDF
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+  // Descargar PDF regenerando desde datos guardados SIN salir de esta página
+      tbody.querySelectorAll('button[data-dl]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-dl');
+          try {
+            // 1) Intentar descarga directa del PDF almacenado
+            const pdfUrl = `${ds.apiUrl}/certificados/${id}/pdf`;
+            const resp = await fetch(pdfUrl, { method: 'GET' });
+            if (resp.ok && resp.headers.get('content-type')?.includes('application/pdf')) {
+              const blob = await resp.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              // Intentar extraer filename del header; fallback al correlativo
+              const cd = resp.headers.get('content-disposition') || '';
+              const m = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^;"]+)"?/i);
+              const numero = (btn.closest('tr')?.querySelector('td')?.textContent || `certificado_${id}`).trim();
+              const fallback = `${numero}.pdf`;
+              const decoded = m ? decodeURIComponent(m[1] || m[2] || fallback) : fallback;
+              a.download = decoded;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+              return;
+            }
+            // 2) Si no existe PDF almacenado, regenerar en la página
+            const detail = await ds.apiCall(`/certificados/${id}`, 'GET');
+            let empresa = null;
+            try { empresa = await ds.getEmpresa(); } catch {}
+            if (Array.isArray(empresa)) empresa = empresa[0] || null;
+            await generateAndDownloadPDF(detail, empresa);
+          } catch (e) {
+            alert('No fue posible descargar el PDF');
+          }
+        });
+      });
+    }
+    function applyFilters() {
+      const q = document.getElementById('searchCerts');
+      const f = document.getElementById('filterTipo');
+      const term = (q?.value || '').toLowerCase();
+      const tipo = f?.value || '';
+      const filtered = (allItems || []).filter(r => {
+        const hay = `${r.numero_certificado||r.codigo||''} ${r.cliente_nombre||r.cliente||''} ${r.instalacion_nombre||r.sucursal||''}`.toLowerCase();
+        const okTipo = !tipo || (r.tipo||'').toLowerCase() === tipo;
+        return hay.includes(term) && okTipo;
+      });
+      renderTable(filtered);
+    }
+
+    async function fetchAndRender() {
+      try {
+        const items = await ds.getCertificados();
+        items.sort((a,b) => String(b.numero_certificado||b.codigo||'').localeCompare(String(a.numero_certificado||a.codigo||'')));
+        allItems = items;
+        if (!filtersBound) {
+          const q = document.getElementById('searchCerts');
+          const f = document.getElementById('filterTipo');
+          q?.addEventListener('input', applyFilters);
+          f?.addEventListener('change', applyFilters);
+          filtersBound = true;
+        }
+        applyFilters();
+      } catch (e) {
+        allItems = [];
+        renderTable([]);
+      }
+    }
+
+    function load() { fetchAndRender(); }
+    load();
+    // Botón manual de refresh
+    document.getElementById('refreshBtn')?.addEventListener('click', () => fetchAndRender());
+    // Auto-actualizar si otra pestaña/página guarda un certificado y emite señal vía localStorage
+    window.addEventListener('storage', (evt) => {
+      if (evt.key === 'cert_created' && evt.newValue) {
+        // Borrar marca y refrescar
+        localStorage.removeItem('cert_created');
+        fetchAndRender();
+      }
+    });
+
+    // ----------------------
+    // PDF helpers (ligeros)
+    // ----------------------
+    function buildCCTVPDFContent(detail, empresa) {
+      const codigo = detail.numero_certificado || detail.codigo || '-';
+  const fechaIso = detail.fecha_mantenimiento || detail.fecha || detail.fecha_emision || '';
+  const fecha = fmtDateLong(fechaIso);
+      const cliente = detail.cliente_nombre || detail.cliente?.nombre || '-';
+      const direccion = detail.instalacion_direccion || detail.instalacion?.direccion || '-';
+      const tecnico = detail.tecnico_nombre || detail.tecnico?.nombre || '-';
+      const equipos = (detail.checklist_data && detail.checklist_data.equipos) ? detail.checklist_data.equipos : (detail.equipos || {});
+      const checklist = (detail.checklist_data && Array.isArray(detail.checklist_data.checklist)) ? detail.checklist_data.checklist : (detail.cctv?.checklist || []);
+      const firmaTec = detail.firma_tecnico || detail.firmas?.tecnico || '';
+      const firmaCli = detail.firma_cliente || detail.firmas?.cliente || '';
+      const logoHtml = (empresa && typeof empresa.logo_empresa === 'string' && empresa.logo_empresa.trim())
+        ? `<div style="position:absolute; right: 20px; top: 10px;"><img src="${empresa.logo_empresa}" alt="Logo Empresa" style="height:72px; max-width:260px; object-fit:contain;"/></div>`
+        : '';
+
+      const checklistLabels = {
+        'grabaciones': 'Grabaciones',
+        'limpieza_camaras': 'Limpieza de cámaras',
+        'fecha_hora': 'Fecha y hora',
+        'enfoques': 'Enfoques',
+        'configuraciones': 'Configuraciones',
+        'filtros': 'Filtros',
+        'revision_cables': 'Revisión de cables y conectores',
+        'revision_almacenamiento': 'Revisión de almacenamiento'
+      };
+      const checklistHtml = (Array.isArray(checklist) && checklist.length)
+        ? checklist.map(item => `
+            <div style="display:flex; align-items:center; gap:8px; min-height:22px;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:2px solid #059669; border-radius:3px; background:#10b981; color:#fff; font-size:12px; font-weight:bold; line-height:1;">✓</span>
+              <span style="line-height:1.2;">${checklistLabels[item] || item}</span>
+            </div>
+          `).join('')
+        : '<div style="color:#9ca3af; font-style:italic; grid-column: 1 / -1;">No hay elementos verificados</div>';
+
+      return `
+        <div style="text-align:center; border-bottom:3px solid #1e40af; padding-bottom:20px; margin-bottom:30px; position:relative;">
+          <div style="position:absolute; left:0; top:0; bottom:0; width:6px; background:linear-gradient(to bottom, #1e40af, #3b82f6); border-radius:3px;"></div>
+          ${logoHtml}
+          <h1 style="font-size:28px; font-weight:bold; color:#1e40af; margin:0 0 10px 0; text-transform:uppercase;">CERTIFICADO DE MANTENIMIENTO</h1>
+          <h2 style="font-size:22px; color:#374151; margin:0; font-weight:600;">SISTEMA CCTV</h2>
+        </div>
+
+        <div style="margin-bottom:30px; background:linear-gradient(135deg, #eff6ff, #dbeafe); padding:20px; border-radius:10px; border-left:6px solid #1e40af; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; font-size:16px;">
+            <div style="font-weight:600; color:#1e40af;">
+              <span style="display:block; font-size:14px; color:#6b7280;">Fecha:</span>
+              <span style="font-size:18px; color:#1e40af;">${fecha}</span>
+            </div>
+            <div style="font-weight:600; color:#1e40af; text-align:right;">
+              <span style="display:block; font-size:14px; color:#6b7280;">Certificado N°:</span>
+              <span style="font-size:18px; color:#1e40af;">${codigo}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:30px;">
+          <h3 style="font-size:16px; font-weight:bold; color:#1e40af; margin-bottom:15px; padding:10px 0 10px 20px; background:linear-gradient(90deg, #eff6ff, transparent); border-left:4px solid #1e40af;">INFORMACIÓN DEL CLIENTE</h3>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; font-size:14px; padding:0 20px; align-items:start;">
+            <div><strong>Cliente:</strong> ${cliente}</div>
+            <div><strong>Técnico:</strong> ${tecnico}</div>
+            <div style="grid-column: 1 / 4;"><strong>Dirección:</strong> ${direccion}</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:30px;">
+          <h3 style="font-size:16px; font-weight:bold; color:#1e40af; margin-bottom:15px; padding:10px 0 10px 20px; background:linear-gradient(90deg, #eff6ff, transparent); border-left:4px solid #1e40af;">EQUIPOS INSTALADOS</h3>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:15px; font-size:14px; padding:0 20px;">
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center; border:1px solid #e2e8f0;"><strong style="color:#475569;">Cámaras IP:</strong><br><span style="font-size:24px; color:#1e40af; font-weight:bold;">${equipos?.camaras_ip || 0}</span></div>
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center; border:1px solid #e2e8f0;"><strong style="color:#475569;">Cámaras Analógicas:</strong><br><span style="font-size:24px; color:#1e40af; font-weight:bold;">${equipos?.camaras_analogicas || 0}</span></div>
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center; border:1px solid #e2e8f0;"><strong style="color:#475569;">Monitores:</strong><br><span style="font-size:24px; color:#1e40af; font-weight:bold;">${equipos?.monitores || 0}</span></div>
+          </div>
+          ${(equipos?.nvr || equipos?.dvr) ? `
+            <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:15px; font-size:14px; padding:0 20px;">
+              ${equipos?.nvr ? `<div style=\"background:#f1f5f9; padding:12px; border-radius:6px; border-left:3px solid #3b82f6;\"><strong style=\"color:#1e40af;\">NVR:</strong> ${equipos.nvr}</div>` : ''}
+              ${equipos?.dvr ? `<div style=\"background:#f1f5f9; padding:12px; border-radius:6px; border-left:3px solid #3b82f6;\"><strong style=\"color:#1e40af;\">DVR:</strong> ${equipos.dvr}</div>` : ''}
+            </div>` : ''}
+        </div>
+
+        <div style="margin-bottom:30px;">
+          <h3 style="font-size:16px; font-weight:bold; color:#1e40af; margin-bottom:15px; padding:10px 0 10px 20px; background:linear-gradient(90deg, #eff6ff, transparent); border-left:4px solid #1e40af;">VERIFICACIÓN REALIZADA</h3>
+          <div style="font-size:14px; padding:0 20px; background:#fefefe; border-radius:8px; border:1px solid #e2e8f0; padding:20px; margin:0 20px;">
+            <div style="display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; align-items:center;">
+              ${checklistHtml}
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute; bottom:80px; left:60px; right:60px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:60px;">
+            <div style="text-align:center;">
+              <div style="height:120px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">${firmaTec ? `<img src="${firmaTec}" style="max-height:100px; max-width:260px; object-fit:contain;"/>` : '<div style="color:#9ca3af;">Sin firma</div>'}</div>
+              <div style="border-top:2px solid #374151; padding-top:8px; font-size:14px;"><strong>Técnico Responsable</strong><br><span style="font-size:12px;">${tecnico || 'N/A'}</span></div>
+            </div>
+            <div style="text-align:center;">
+              <div style="height:120px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">${firmaCli ? `<img src="${firmaCli}" style="max-height:100px; max-width:260px; object-fit:contain;"/>` : '<div style="color:#9ca3af;">Sin firma</div>'}</div>
+              <div style="border-top:2px solid #374151; padding-top:8px; font-size:14px;"><strong>Representante Empresa</strong><br><span style="font-size:12px;">${empresa?.nombre_representante || 'Representante'}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute; bottom:20px; left:60px; right:60px; text-align:center; font-size:12px; color:#6b7280; border-top:1px solid #e5e7eb; padding-top:10px;">
+          <strong>Código de Validación:</strong> ${codigo} |
+          <strong>Generado el:</strong> ${new Date().toLocaleDateString('es-CL')}
+        </div>
+      `;
+    }
+
+    async function generateAndDownloadPDF(detail, empresa) {
+      const container = document.createElement('div');
+      container.style.cssText = 'width:1200px;min-height:1620px;padding:10px;background:white;color:#333;position:relative;box-sizing:border-box;font-family:Arial, sans-serif;overflow:visible;';
+      const tipo = (detail.tipo || '').toLowerCase();
+      if (tipo === 'cctv') {
+        container.innerHTML = buildCCTVPDFContent(detail, empresa);
+      } else {
+        container.innerHTML = `<div style="text-align:center; padding:100px 0;"><h1 style="font-size:32px; color:#1e40af; margin-bottom:50px;">CERTIFICADO DE ${tipo.toUpperCase()||'MANTENIMIENTO'}</h1><p style="font-size:18px; color:#666;">Plantilla en desarrollo</p></div>`;
+      }
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      document.body.appendChild(container);
+      await new Promise(r => setTimeout(r, 200));
+
+      // Medir tamaño real del contenido, incluyendo elementos absolutos
+      const computeRealSize = (root) => {
+        try {
+          let maxRight = root.clientWidth;
+          let maxBottom = root.clientHeight;
+          const rootRect = root.getBoundingClientRect();
+          root.querySelectorAll('*').forEach(el => {
+            const cs = getComputedStyle(el);
+            if (cs.position === 'absolute' || cs.position === 'fixed') {
+              const rect = el.getBoundingClientRect();
+              const right = rect.right - rootRect.left;
+              const bottom = rect.bottom - rootRect.top;
+              if (right > maxRight) maxRight = right;
+              if (bottom > maxBottom) maxBottom = bottom;
+            }
+          });
+          maxRight = Math.max(maxRight, root.scrollWidth);
+          maxBottom = Math.max(maxBottom, root.scrollHeight);
+          return { w: Math.ceil(maxRight), h: Math.ceil(maxBottom) };
+        } catch (_) {
+          return { w: Math.ceil(root.scrollWidth || root.clientWidth || 1200), h: Math.ceil(root.scrollHeight || root.clientHeight || 1600) };
+        }
+      };
+      const { w: realW, h: realH } = computeRealSize(container);
+      // Asegurar que el contenedor tenga la altura real medida para que html2canvas no recorte
+      container.style.height = `${realH}px`;
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        scrollY: 0,
+        removeContainer: true
+      });
+      document.body.removeChild(container);
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const pdfWidth = 210, pdfHeight = 297, margin = 10;
+      const safetyTop = 1.5, safetyBottom = 4; // volvemos al valor original con footer relativo
+      const maxW = pdfWidth - margin * 2;
+      const innerH = pdfWidth - margin * 2 - safetyTop - safetyBottom;
+      let imgW = maxW;
+      let imgH = imgW * (canvas.height / canvas.width);
+      if (imgH > innerH) {
+        imgH = innerH;
+        imgW = imgH / (canvas.height / canvas.width);
+      }
+      const x = (pdfWidth - imgW) / 2;
+      const y = margin + safetyTop;
+      pdf.addImage(imgData, 'JPEG', x, y, imgW, imgH);
+  const code = detail.numero_certificado || detail.codigo || 'certificado';
+  pdf.save(`${code}.pdf`);
+    }
+
+    load();
+  </script>
+</body>
+</html>

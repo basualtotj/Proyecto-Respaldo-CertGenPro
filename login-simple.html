@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Certificados</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            font-size: 1.8rem;
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+        
+        .logo p {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #374151;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 0.9rem;
+            border-left: 4px solid #dc2626;
+        }
+        
+        .success-message {
+            background: #d1fae5;
+            color: #059669;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 0.9rem;
+            border-left: 4px solid #059669;
+        }
+        
+        .test-credentials {
+            background: #f3f4f6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+        
+        .test-credentials h4 {
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .test-credentials .cred {
+            font-family: monospace;
+            background: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            margin: 2px 0;
+            display: block;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #6b7280;
+            font-size: 0.8rem;
+        }
+        
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 25px;
+            }
+            
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>🔐 Iniciar Sesión</h1>
+            <p>Sistema de Certificados</p>
+        </div>
+        
+        <div class="test-credentials">
+            <h4>🧪 Credenciales de Prueba:</h4>
+            <span class="cred">👑 Admin: admin / admin123</span>
+            <span class="cred">👤 Usuario: usuario / usuario123</span>
+        </div>
+        
+        <form id="loginForm">
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+            
+            <div class="form-group">
+                <label for="identifier">Usuario o Email</label>
+                <input type="text" id="identifier" name="identifier" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" class="login-btn" id="loginBtn">
+                <span id="loginBtnText">Iniciar Sesión</span>
+            </button>
+        </form>
+        
+        <div class="footer">
+            <p>© 2025 Redes y CCTV SPA</p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginBtnText = document.getElementById('loginBtnText');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const identifier = document.getElementById('identifier').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!identifier || !password) {
+                showError('Por favor completa todos los campos');
+                return;
+            }
+            
+            setLoading(true);
+            hideMessages();
+            
+            try {
+                const response = await fetch('login-handler.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ identifier, password }),
+                    credentials: 'same-origin'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess('¡Login exitoso! Redirigiendo...');
+                    setTimeout(() => {
+                        window.location.href = result.redirect || 'index.html';
+                    }, 1500);
+                } else {
+                    showError(result.message || 'Error al iniciar sesión');
+                }
+                
+            } catch (error) {
+                console.error('Error de login:', error);
+                showError('Error de conexión. Verifica tu conexión a internet.');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+        
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+        
+        function setLoading(loading) {
+            loginBtn.disabled = loading;
+            loginBtnText.textContent = loading ? '🔄 Iniciando sesión...' : 'Iniciar Sesión';
+        }
+        
+        // Auto-focus en el primer campo
+        document.getElementById('identifier').focus();
+    </script>
+</body>
+</html>

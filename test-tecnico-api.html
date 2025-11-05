@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Técnico API</title>
+</head>
+<body>
+    <h1>Test Creación de Técnico</h1>
+    
+    <div>
+        <h2>Test 1: Campos mínimos requeridos</h2>
+        <button onclick="testMinimalTecnico()">Crear Técnico Mínimo</button>
+        <div id="result1"></div>
+    </div>
+    
+    <div>
+        <h2>Test 2: Con campos opcionales vacíos</h2>
+        <button onclick="testTecnicoWithEmptyOptionals()">Crear Técnico con Opcionales Vacíos</button>
+        <div id="result2"></div>
+    </div>
+    
+    <div>
+        <h2>Test 3: Sin campos opcionales</h2>
+        <button onclick="testTecnicoNoOptionals()">Crear Técnico sin Campos Opcionales</button>
+        <div id="result3"></div>
+    </div>
+
+    <script>
+        async function testMinimalTecnico() {
+            const data = {
+                nombre: "Test Mínimo",
+                especialidad: "Testing",
+                email: "minimal@test.com",
+                telefono: "111222333"
+            };
+            
+            await testAPI('/api/tecnicos', data, 'result1');
+        }
+        
+        async function testTecnicoWithEmptyOptionals() {
+            const data = {
+                nombre: "Test Con Vacíos",
+                especialidad: "Testing",
+                email: "empty@test.com",
+                telefono: "444555666",
+                certificaciones: "",
+                firma_digital: ""
+            };
+            
+            await testAPI('/api/tecnicos', data, 'result2');
+        }
+        
+        async function testTecnicoNoOptionals() {
+            const data = {
+                nombre: "Test Sin Opcionales",
+                especialidad: "Testing",
+                email: "noopt@test.com", 
+                telefono: "777888999"
+            };
+            
+            await testAPI('/api/tecnicos', data, 'result3');
+        }
+        
+        async function testAPI(endpoint, data, resultDiv) {
+            const resultElement = document.getElementById(resultDiv);
+            resultElement.innerHTML = '<p>Enviando...</p>';
+            
+            try {
+                console.log('Enviando data:', data);
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const rawText = await response.text();
+                console.log('Raw response:', rawText);
+                
+                try {
+                    const result = JSON.parse(rawText);
+                    console.log('Parsed JSON:', result);
+                    
+                    if (result.success) {
+                        resultElement.innerHTML = `
+                            <p style="color: green;">✅ Éxito: ${result.message}</p>
+                            <p>ID creado: ${result.data.id}</p>
+                            <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                        `;
+                    } else {
+                        resultElement.innerHTML = `
+                            <p style="color: red;">❌ Error: ${result.message}</p>
+                        `;
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing JSON:', parseError);
+                    resultElement.innerHTML = `
+                        <p style="color: red;">❌ Error: Respuesta no-JSON del servidor</p>
+                        <p>Status: ${response.status}</p>
+                        <p>Raw: ${rawText.substring(0, 200)}...</p>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Request error:', error);
+                resultElement.innerHTML = `
+                    <p style="color: red;">❌ Error de red: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

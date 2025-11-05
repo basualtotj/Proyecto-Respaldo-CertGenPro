@@ -416,13 +416,34 @@ class Certificado extends BaseModel {
     }
     
     public function getCompleto($id) {
-        $sql = "SELECT * FROM certificados_completos WHERE id = ?";
+        $sql = "SELECT 
+                    c.*,
+                    cl.nombre as cliente_nombre,
+                    cl.rut as cliente_rut,
+                    i.direccion as instalacion_direccion,
+                    i.tipo_sistema as instalacion_tipo,
+                    t.nombre as tecnico_nombre
+                FROM certificados c
+                LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                LEFT JOIN instalaciones i ON c.instalacion_id = i.id
+                LEFT JOIN tecnicos t ON c.tecnico_id = t.id
+                WHERE c.id = ?";
         $stmt = $this->db->query($sql, [$id]);
         return $stmt->fetch();
     }
     
     public function getListaCompleta($limit = 50, $offset = 0, $filtros = []) {
-        $sql = "SELECT * FROM certificados_completos";
+        $sql = "SELECT 
+                    c.*,
+                    cl.nombre as cliente_nombre,
+                    cl.rut as cliente_rut,
+                    i.direccion as instalacion_direccion,
+                    i.tipo_sistema as instalacion_tipo,
+                    t.nombre as tecnico_nombre
+                FROM certificados c
+                LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                LEFT JOIN instalaciones i ON c.instalacion_id = i.id
+                LEFT JOIN tecnicos t ON c.tecnico_id = t.id";
         $params = [];
         
         $whereClauses = [];
@@ -430,19 +451,19 @@ class Certificado extends BaseModel {
             if ($valor !== '') {
                 switch ($campo) {
                     case 'tipo':
-                        $whereClauses[] = "tipo = ?";
+                        $whereClauses[] = "c.tipo = ?";
                         $params[] = $valor;
                         break;
                     case 'cliente':
-                        $whereClauses[] = "cliente_nombre LIKE ?";
+                        $whereClauses[] = "cl.nombre LIKE ?";
                         $params[] = "%$valor%";
                         break;
                     case 'fecha_desde':
-                        $whereClauses[] = "fecha_mantenimiento >= ?";
+                        $whereClauses[] = "c.fecha_mantenimiento >= ?";
                         $params[] = $valor;
                         break;
                     case 'fecha_hasta':
-                        $whereClauses[] = "fecha_mantenimiento <= ?";
+                        $whereClauses[] = "c.fecha_mantenimiento <= ?";
                         $params[] = $valor;
                         break;
                 }
@@ -453,7 +474,7 @@ class Certificado extends BaseModel {
             $sql .= " WHERE " . implode(' AND ', $whereClauses);
         }
         
-        $sql .= " ORDER BY fecha_emision DESC LIMIT $limit OFFSET $offset";
+        $sql .= " ORDER BY c.fecha_emision DESC LIMIT $limit OFFSET $offset";
         
         $stmt = $this->db->query($sql, $params);
         return $stmt->fetchAll();

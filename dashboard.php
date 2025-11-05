@@ -40,27 +40,17 @@ $user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Principal</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Componente de navegación global -->
+    <script src="js/components/navbar.js"></script>
 </head>
 <body class="bg-gray-50">
-    <!-- Header -->
-    <div class="bg-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <i class="fas fa-shield-alt mr-3 text-2xl"></i>
-                    <div>
-                        <h1 class="text-xl font-bold">Sistema de Certificados</h1>
-                        <p class="text-blue-100 text-sm">Bienvenido, <?= htmlspecialchars($user_name) ?> (<?= htmlspecialchars($user_role) ?>)</p>
-                    </div>
-                </div>
-                <a href="?logout=1" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
-                </a>
-            </div>
-        </div>
-    </div>
 
     <div class="container mx-auto px-4 py-8">
         <!-- Opciones de Navegación -->
@@ -94,6 +84,20 @@ $user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
                 </div>
             </div>
 
+            <!-- Repositorio de Certificados -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                <div class="p-6 text-center">
+                    <div class="bg-orange-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-file-alt text-orange-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Certificados Emitidos</h3>
+                    <p class="text-gray-600 mb-4">Ver y descargar certificados generados</p>
+                    <a href="certificados.php" class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-semibold inline-block">
+                        <i class="fas fa-list mr-2"></i>Ver Certificados
+                    </a>
+                </div>
+            </div>
+
             <?php if ($user_role === 'admin'): ?>
             <!-- CRUD Simple (Solo Admin) -->
             <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
@@ -103,7 +107,7 @@ $user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
                     </div>
                     <h3 class="text-xl font-semibold text-gray-800 mb-2">Gestión de Datos</h3>
                     <p class="text-gray-600 mb-4">Administrar clientes y técnicos</p>
-                    <a href="crud-simple.php" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold inline-block">
+                    <a href="crud.php" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold inline-block">
                         <i class="fas fa-cog mr-2"></i>Administrar
                     </a>
                 </div>
@@ -181,5 +185,8 @@ $user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
             <p class="text-gray-400 text-sm mt-2">Versión 1.0 - Un solo servidor PHP</p>
         </div>
     </footer>
+
+    <!-- Data service -->
+    <script src="js/data-service.js"></script>
 </body>
 </html>

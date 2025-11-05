@@ -115,8 +115,13 @@ class AuthGuard {
     }
 
     displayUserInfo(user) {
-        console.log('👤 Mostrando info del usuario:', user);
+        console.log('👤 Info del usuario disponible:', user);
         
+        // DESHABILITADO: Ya no creamos indicador adicional porque la navbar maneja esto
+        // La navbar ya muestra la información del usuario, no necesitamos duplicarla
+        console.log('ℹ️ Información de usuario manejada por la navbar global');
+        
+        /* CÓDIGO COMENTADO - EVITA DUPLICACIÓN
         // Crear indicador de usuario logueado con CSS inline
         const userIndicator = document.createElement('div');
         userIndicator.style.cssText = `
@@ -154,7 +159,7 @@ class AuthGuard {
         
         document.body.appendChild(userIndicator);
         console.log('✅ Info de usuario agregada al DOM');
-    }
+        */
 
     async logout() {
         try {
