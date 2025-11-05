@@ -237,8 +237,31 @@ class DataService {
      * Guardar certificado
      */
     async saveCertificate(certificateData) {
-    console.log('💾 Guardando certificado en MySQL...');
-    return await this.apiCall('/certificados', 'POST', certificateData);
+        console.log('💾 Guardando certificado en MySQL...');
+        console.log('💾 DataService - Datos enviados:', JSON.stringify(certificateData, null, 2));
+        
+        const result = await this.apiCall('/certificados', 'POST', certificateData);
+        
+        console.log('🔍 DataService - Raw result de apiCall:', result);
+        console.log('🔍 DataService - Tipo de result:', typeof result);
+        console.log('🔍 DataService - result es null/undefined?', result == null);
+        console.log('🔍 DataService - JSON.stringify de result:', JSON.stringify(result, null, 2));
+        
+        if (result) {
+            console.log('🔍 DataService - Keys en result:', Object.keys(result));
+            console.log('🔍 DataService - result.codigo_validacion:', result?.codigo_validacion);
+            console.log('🔍 DataService - result.codigoValidacion:', result?.codigoValidacion);
+            console.log('🔍 DataService - result.validation_code:', result?.validation_code);
+            
+            // Buscar cualquier propiedad que contenga "codigo" o "validacion"
+            for (const key in result) {
+                if (key.toLowerCase().includes('validacion') || key.toLowerCase().includes('codigo')) {
+                    console.log(`🔍 DataService - Propiedad encontrada: ${key} = ${result[key]}`);
+                }
+            }
+        }
+        
+        return result;
     }
 
     /**

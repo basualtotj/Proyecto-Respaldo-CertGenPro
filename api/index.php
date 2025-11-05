@@ -886,9 +886,44 @@ function createCertificado($params) {
             $numeroCert = $prefijo . '-' . $contadorActual . '-' . $mes . '-' . $anio;
             $data['numero_certificado'] = $numeroCert;
 
+            // Generar código de validación si no existe
+            if (empty($data['codigo_validacion'])) {
+                // Generar código de validación único (formato: ABCD1234EF)
+                $db = Database::getInstance();
+                do {
+                    $letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    $numeros = '0123456789';
+                    $codigo = '';
+                    
+                    // 4 letras iniciales
+                    for ($i = 0; $i < 4; $i++) {
+                        $codigo .= $letras[random_int(0, strlen($letras) - 1)];
+                    }
+                    // 4 números
+                    for ($i = 0; $i < 4; $i++) {
+                        $codigo .= $numeros[random_int(0, strlen($numeros) - 1)];
+                    }
+                    // 2 letras finales
+                    for ($i = 0; $i < 2; $i++) {
+                        $codigo .= $letras[random_int(0, strlen($letras) - 1)];
+                    }
+                    
+                    // Verificar que el código no exista ya en la BD
+                    $stmt = $db->query("SELECT COUNT(*) as count FROM certificados WHERE codigo_validacion = ?", [$codigo]);
+                    $result = $stmt->fetch();
+                    
+                } while ($result['count'] > 0);
+                
+                $data['codigo_validacion'] = $codigo;
+                error_log("✅ API: Código de validación generado: " . $codigo);
+            }
+
             // Insertar certificado
             $certificado = new Certificado();
+            error_log("🔍 API: Creando certificado con clase: " . get_class($certificado));
+            error_log("🔍 API: Datos a insertar: " . json_encode($data));
             $id = $certificado->create($data);
+            error_log("🔍 API: Certificado creado con ID: " . $id);
 
             // Incrementar y guardar el siguiente correlativo
             $config->setValue($clave, $contadorActual + 1, 'number');

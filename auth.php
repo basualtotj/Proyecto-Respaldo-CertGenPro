@@ -3,7 +3,9 @@
 // SISTEMA DE AUTENTICACIÓN
 // ============================================
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once __DIR__ . '/config.php';
 
@@ -167,6 +169,34 @@ class Auth {
 
 // Crear instancia global
 $auth = new Auth();
+
+// ============================================
+// FUNCIONES GLOBALES PARA COMPATIBILIDAD
+// ============================================
+
+/**
+ * Verificar si el usuario está autenticado
+ */
+function isLoggedIn() {
+    global $auth;
+    return $auth->isAuthenticated();
+}
+
+/**
+ * Obtener datos del usuario actual
+ */
+function getCurrentUser() {
+    global $auth;
+    return $auth->getCurrentUser();
+}
+
+/**
+ * Cerrar sesión
+ */
+function logout() {
+    global $auth;
+    return $auth->logout();
+}
 
 // Manejar requests AJAX
 if (isset($_GET['action'])) {

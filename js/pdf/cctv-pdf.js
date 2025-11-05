@@ -50,9 +50,14 @@
         info,     // getClienteInstalacionInfo()
         empresa,  // datos de empresa (logo, representante)
         code,     // número correlativo asignado por backend
+        validationCode, // código de validación para el footer
         evidencias = [], // [{src,w,h,orientation}]
         autoSave = true  // si true, descarga el archivo al final
       } = opts || {};
+
+      // Debug: verificar que el código de validación llegue correctamente
+      console.log('🔍 PDF Generator - validationCode recibido:', validationCode);
+      console.log('🔍 PDF Generator - opts completo:', opts);
 
   const doc = new jsPDF({ orientation: this.orientation, unit: this.unit, format: this.format });
   doc.setFont('helvetica', 'normal');
@@ -63,13 +68,13 @@
       const logoDataUrl = await this._getEmpresaLogoDataUrl(empresa).catch(() => null);
 
       // Página 1
-      this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
+      this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl, validationCode);
   this._drawPage1(doc, formData, info);
-      this._drawFooter(doc, code);
+      this._drawFooter(doc, validationCode);
 
       // Evidencias (páginas 2+)
       if (Array.isArray(evidencias) && evidencias.length) {
-        await this._drawEvidencePages(doc, evidencias, systemLabel, code, fechaText, logoDataUrl);
+        await this._drawEvidencePages(doc, evidencias, systemLabel, code, fechaText, logoDataUrl, validationCode);
       }
 
       const filename = `${code || 'CERT'}.pdf`;
@@ -81,7 +86,7 @@
     }
 
     // Header reutilizable
-    _drawHeader(doc, systemLabel, code, fechaText, logoDataUrl) {
+    _drawHeader(doc, systemLabel, code, fechaText, logoDataUrl, validationCode) {
       const { pdfWidth: W, margin: M, colors: C } = this;
       // Logo (izquierda) y título a la derecha/centro con composición sobria
       const topY = M - 2;
@@ -132,7 +137,7 @@
     doc.setFont('helvetica', 'normal');
     doc.text(code || '-', start + rlW + 3, metaY);
 
-  // Separador sutil debajo de la fecha para delimitar la primera sección
+  // Separador sutil para delimitar la sección del header
   doc.setDrawColor(...C.grayLight);
   doc.setLineWidth(0.3);
   doc.line(M, metaY + 6, W - M, metaY + 6);
@@ -140,7 +145,7 @@
 
     _drawPage1(doc, formData, info) {
       const { pdfWidth: W, margin: M, colors: C, pdfHeight: H } = this;
-  let y = M + 36; // más separación debajo del encabezado y separador
+  let y = M + 38; // menos separación ya que el header es más pequeño
 
   const sectionTitle = (t) => {
   // Barra izquierda (azul corporativo)
@@ -301,10 +306,11 @@
         { label: 'Email', value: info?.cliente?.email },
         { label: 'Técnico', value: info?.tecnico?.nombre }
   ], wAligned);
-  y += 6; // más espacio entre secciones
+  y += 3; // espacio reducido para equipos instalados
 
       // Equipos instalados: 3 casillas + 1 columna para NVR/DVR/JOYSTICK (vertical)
       sectionTitle('EQUIPOS INSTALADOS');
+      y -= 2; // reducir espacio adicional para esta sección
       const colGap4 = 6;
       const colW4 = (W - M * 2 - colGap4 * 3) / 4; // 4 columnas
       const cardsH = 12;
@@ -544,9 +550,9 @@
       };
   drawSignature(sig1X, sigY, 'Técnico Responsable', formData?.firmas?.tecnico || null, info?.tecnico?.nombre || '');
   drawSignature(sig2X, sigY, 'Representante Empresa', formData?.firmas?.cliente || null, info?.tecnico?.nombre || '');
-    }    async _drawEvidencePages(doc, evidencias, systemLabel, code, fechaText, logoDataUrl) {
+    }    async _drawEvidencePages(doc, evidencias, systemLabel, code, fechaText, logoDataUrl, validationCode) {
       const { pdfWidth: W, pdfHeight: H, margin: M } = this;
-      const headerH = 28, footerH = 16;
+      const headerH = 38, footerH = 16; // Aumentado para el header expandido
       const gridX = M, gridW = W - M * 2;
       const topY = M + headerH + 10;
       const bottomY = H - M - footerH;
@@ -671,7 +677,7 @@
       };
 
       doc.addPage('a4', 'portrait');
-      this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
+      this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl, validationCode);
       let y = drawSectionHeader();
 
       while (true) {
@@ -696,9 +702,9 @@
         })();
 
         if (y + estRowH > bottomY) {
-          this._drawFooter(doc, code);
+          this._drawFooter(doc, validationCode);
           doc.addPage('a4', 'portrait');
-          this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl);
+          this._drawHeader(doc, systemLabel, code, fechaText, logoDataUrl, validationCode);
           y = drawSectionHeader();
         }
 
@@ -706,12 +712,12 @@
         y += rowH + vGapRow;
       }
 
-      this._drawFooter(doc, code);
+      this._drawFooter(doc, validationCode);
     }
 
     
 
-    _drawFooter(doc, code) {
+    _drawFooter(doc, validationCode) {
       const { pdfWidth: W, pdfHeight: H, margin: M } = this;
       const footerY = H - M - 8;
       doc.setDrawColor(229, 231, 235);
@@ -722,7 +728,7 @@
       doc.setFontSize(8);
       doc.setTextColor(75, 85, 99);
       const today = new Date().toLocaleDateString('es-ES');
-      doc.text(`Generado el: ${today} | Puede validar este certificado en nuestra web usando este código: ${code || '-'}` , W / 2, footerY + 5, { align: 'center' });
+      doc.text(`Generado el: ${today} | Puede validar este certificado en nuestra web usando este código: ${validationCode || '-'}` , W / 2, footerY + 5, { align: 'center' });
       
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);

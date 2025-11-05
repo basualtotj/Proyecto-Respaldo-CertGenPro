@@ -228,6 +228,9 @@
         }
 
         function showValidCertificate(certificate) {
+            // Guardar datos del certificado para uso posterior (descarga PDF)
+            window.lastValidatedCertificate = certificate;
+            
             const resultContainer = document.getElementById('validation-result');
             resultContainer.className = 'search-container';
             
@@ -389,72 +392,95 @@
             // Cambiar el botón para mostrar estado de descarga
             const button = event.target.closest('button');
             const originalContent = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Buscando PDF...';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generando PDF...';
             button.disabled = true;
             
             try {
-                // Obtener el certificado completo con ID
-                const code = document.getElementById('certificate-code').value;
-                const response = await fetch(`/validate-api.php?code=${encodeURIComponent(code)}`);
-                const data = await response.json();
-                
-                if (!data.success || !data.certificate) {
-                    throw new Error('No se pudo obtener los datos del certificado');
+                // Obtener datos completos del certificado validado
+                const certificateData = window.lastValidatedCertificate;
+                if (!certificateData) {
+                    throw new Error('No hay datos del certificado para generar PDF');
                 }
                 
-                const certificate = data.certificate;
+                button.innerHTML = '<i class="fas fa-download fa-spin mr-2"></i>Generando PDF...';
                 
-                // Buscar el certificado en la API para obtener el ID
-                button.innerHTML = '<i class="fas fa-search fa-spin mr-2"></i>Buscando archivo...';
+                // Generar PDF usando CCTVPdfGenerator (mismo que certificate-generator.php)
+                const generator = new window.CCTVPdfGenerator();
                 
-                try {
-                    const searchResponse = await fetch(`/api/certificados`);
-                    const searchData = await searchResponse.json();
-                    const certificados = searchData.data || searchData; // Manejar ambos formatos
-                    
-                    // Buscar por número de certificado o código de validación
-                    const cert = certificados.find(c => 
-                        c.numero_certificado === certificate.numero_certificado || 
-                        c.codigo_validacion === certificate.codigo_validacion
-                    );
-                    
-                    if (cert && cert.id) {
-                        button.innerHTML = '<i class="fas fa-download fa-spin mr-2"></i>Descargando PDF...';
-                        
-                        // Intentar descarga directa del PDF almacenado (IGUAL QUE certificados.html)
-                        const pdfUrl = `/api/certificados/${cert.id}/pdf`;
-                        const pdfResponse = await fetch(pdfUrl, { method: 'GET' });
-                        
-                        if (pdfResponse.ok && pdfResponse.headers.get('content-type')?.includes('application/pdf')) {
-                            // Descargar el PDF original almacenado
-                            const blob = await pdfResponse.blob();
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `${certificate.numero_certificado}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            a.remove();
-                            URL.revokeObjectURL(url);
-                            
-                            button.innerHTML = '<i class="fas fa-check mr-2"></i>PDF Descargado';
-                            setTimeout(() => {
-                                button.innerHTML = originalContent;
-                                button.disabled = false;
-                            }, 2000);
-                            return;
-                        }
+                // Preparar datos en el formato que espera el generador
+                const formData = {
+                    fecha_mantenimiento: certificateData.fecha_mantenimiento,
+                    solicitudes_cliente: certificateData.detalles?.solicitudes_cliente || '',
+                    observaciones: certificateData.detalles?.observaciones_generales || '',
+                    firmas: {
+                        tecnico: null, // Las firmas no están en la validación pública
+                        cliente: null
+                    },
+                    cctv: {
+                        checklist: certificateData.detalles?.checklist || [],
+                        camaras_ip: certificateData.detalles?.equipos?.camaras_ip || '',
+                        camaras_analogicas: certificateData.detalles?.equipos?.camaras_analogicas || '',
+                        monitores: certificateData.detalles?.equipos?.monitores || '',
+                        nvr: certificateData.detalles?.equipos?.nvr || '',
+                        dvr: certificateData.detalles?.equipos?.dvr || '',
+                        switches: certificateData.detalles?.equipos?.switches || '',
+                        patch_panel: certificateData.detalles?.equipos?.patch_panel || '',
+                        rack: certificateData.detalles?.equipos?.rack || ''
                     }
-                } catch (searchError) {
-                    console.warn('Error al buscar el certificado:', searchError);
-                }
+                };
                 
-                // Si llegamos aquí, no se pudo encontrar el PDF original
-                throw new Error('PDF original no encontrado. El certificado puede haber sido creado antes de implementar el almacenamiento de PDFs.');
+                // Información del cliente/instalación/técnico
+                const info = {
+                    cliente: {
+                        nombre: certificateData.cliente?.nombre || '',
+                        rut: certificateData.cliente?.rut || '',
+                        direccion: certificateData.cliente?.direccion || '',
+                        telefono: certificateData.cliente?.telefono || '',
+                        email: certificateData.cliente?.email || ''
+                    },
+                    instalacion: {
+                        direccion: certificateData.instalacion?.direccion || '',
+                        tipo_sistema: certificateData.instalacion?.tipo_sistema || ''
+                    },
+                    tecnico: {
+                        nombre: certificateData.tecnico?.nombre || '',
+                        especialidad: certificateData.tecnico?.especialidad || ''
+                    }
+                };
+                
+                // Información de la empresa
+                const empresa = certificateData.empresa || {};
+                
+                // Generar PDF
+                const { blob, filename } = await generator.generate({
+                    formData: formData,
+                    info: info,
+                    empresa: empresa,
+                    code: certificateData.numero_certificado, // Número correlativo en header
+                    validationCode: certificateData.codigo_validacion, // Código de validación en footer
+                    evidencias: certificateData.detalles?.evidencias || [],
+                    autoSave: false
+                });
+                
+                // Descargar el PDF generado
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                button.innerHTML = '<i class="fas fa-check mr-2"></i>PDF Generado';
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.disabled = false;
+                }, 2000);
                 
             } catch (error) {
-                console.error('Error al descargar certificado:', error);
-                button.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Error en descarga';
+                console.error('Error al generar certificado:', error);
+                button.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Error al generar PDF';
                 setTimeout(() => {
                     button.innerHTML = originalContent;
                     button.disabled = false;

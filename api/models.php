@@ -221,7 +221,7 @@ abstract class BaseModel {
                 $validFields = ['razon_social','rut','direccion','telefono','email','logo','firma','representante','cargo_representante'];
                 break;
             case 'certificados':
-                $validFields = ['numero_certificado','tipo','cliente_id','instalacion_id','tecnico_id','fecha_mantenimiento','solicitudes_cliente','observaciones_generales','checklist_data','estado'];
+                $validFields = ['numero_certificado','codigo_validacion','tipo','cliente_id','instalacion_id','tecnico_id','fecha_mantenimiento','solicitudes_cliente','observaciones_generales','checklist_data','estado'];
                 break;
             default:
                 // fallback: permitir llaves string escalar del payload
@@ -406,6 +406,12 @@ class Tecnico extends BaseModel {
 class Certificado extends BaseModel {
     protected $table = 'certificados';
     
+    public function __construct() {
+        parent::__construct();
+        // Log para confirmar que la clase se está cargando
+        error_log("🔄 Certificado class constructor called - Custom create() method available");
+    }
+    
     public function generateNumero($tipo) {
         $sql = "CALL GenerarNumeroCertificado(?, @numero)";
         $this->db->query($sql, [$tipo]);
@@ -414,6 +420,53 @@ class Certificado extends BaseModel {
         $result = $stmt->fetch();
         return $result['numero'];
     }
+    
+    /**
+     * Generar código de validación aleatorio con formato específico
+     * Formato: ABCD1234CA
+     * - 4 letras iniciales (ABCD)
+     * - 4 números (1234) 
+     * - 2 letras finales (CA)
+     * Evita caracteres confusos: 0, O, I, 1
+     */
+    public function generateCodigoValidacion() {
+        $letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Sin I, O
+        $numeros = '23456789'; // Sin 0, 1
+        
+        // Generar código hasta que sea único
+        do {
+            $codigo = '';
+            
+            // 4 letras iniciales
+            for ($i = 0; $i < 4; $i++) {
+                $codigo .= $letras[random_int(0, strlen($letras) - 1)];
+            }
+            
+            // 4 números
+            for ($i = 0; $i < 4; $i++) {
+                $codigo .= $numeros[random_int(0, strlen($numeros) - 1)];
+            }
+            
+            // 2 letras finales
+            for ($i = 0; $i < 2; $i++) {
+                $codigo .= $letras[random_int(0, strlen($letras) - 1)];
+            }
+            
+            // Verificar que el código no exista ya en la BD
+            $sql = "SELECT COUNT(*) as count FROM certificados WHERE codigo_validacion = ?";
+            $stmt = $this->db->query($sql, [$codigo]);
+            $result = $stmt->fetch();
+            
+        } while ($result['count'] > 0);
+        
+        return $codigo;
+    }
+    
+    /**
+     * Crear certificado con generación automática de código de validación
+     * Sobrescribe el método create() de BaseModel
+     */
+    // Método create() heredado de BaseModel - ya no necesitamos sobrecargarlo
     
     public function getCompleto($id) {
         $sql = "SELECT 
@@ -429,7 +482,14 @@ class Certificado extends BaseModel {
                 LEFT JOIN tecnicos t ON c.tecnico_id = t.id
                 WHERE c.id = ?";
         $stmt = $this->db->query($sql, [$id]);
-        return $stmt->fetch();
+        $result = $stmt->fetch();
+        
+        // Debug para verificar que el codigo_validacion está presente
+        error_log("🔍 getCompleto - ID consultado: " . $id);
+        error_log("🔍 getCompleto - Result keys: " . (is_array($result) ? implode(', ', array_keys($result)) : 'NO_ARRAY'));
+        error_log("🔍 getCompleto - codigo_validacion en result: " . (isset($result['codigo_validacion']) ? $result['codigo_validacion'] : 'NO_ENCONTRADO'));
+        
+        return $result;
     }
     
     public function getListaCompleta($limit = 50, $offset = 0, $filtros = []) {

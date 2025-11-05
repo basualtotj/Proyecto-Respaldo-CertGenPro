@@ -6,14 +6,21 @@
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$code = $_GET['code'] ?? '';
+// Obtener código de validación desde GET o POST (JSON)
+$code = '';
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $code = $_GET['code'] ?? '';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $code = $input['codigo_validacion'] ?? $_POST['codigo_validacion'] ?? '';
+}
 
 if (empty($code)) {
     http_response_code(400);

@@ -1353,7 +1353,12 @@ class MaintenanceCertificateSystem {
 
         // Construir payload y crear certificado en backend (asigna correlativo e ID)
         const payload = this.buildCertificatePayload();
+        console.log('🔍 DEBUG: Payload enviado a API:', JSON.stringify(payload, null, 2));
+        
         const created = await this.dataService.saveCertificate(payload);
+        console.log('🔍 Maintenance System - Respuesta completa de la API:', created);
+        console.log('🔍 Maintenance System - JSON.stringify de created:', JSON.stringify(created, null, 2));
+        
         if (!created || !created.id || !created.numero_certificado) {
             this.showError('No se pudo crear el certificado en el servidor');
             return;
@@ -1367,11 +1372,25 @@ class MaintenanceCertificateSystem {
             const formData = this.getFormData();
             const info = this.getClienteInstalacionInfo();
             const evidencias = Array.isArray(formData.evidencias) ? formData.evidencias : [];
+            
+            // Debug detallado del código de validación
+            console.log('✅ Maintenance System - codigo_validacion encontrado:', created.codigo_validacion);
+            
+            // Asegurar que el código de validación no sea undefined
+            const validationCode = created.codigo_validacion || created.codigoValidacion || created.validation_code || null;
+            if (!validationCode) {
+                console.error('❌ Maintenance System - No se encontró código de validación en la respuesta!');
+                console.error('❌ Objeto created completo:', JSON.stringify(created, null, 2));
+            } else {
+                console.log('✅ Maintenance System - Código de validación encontrado:', validationCode);
+            }
+            
             const { blob, filename } = await generator.generate({
                 formData,
                 info,
                 empresa: this.empresa,
                 code: this.assignedCertificateNumber,
+                validationCode: validationCode, // Usar la variable procesada
                 evidencias,
                 autoSave: false
             });
