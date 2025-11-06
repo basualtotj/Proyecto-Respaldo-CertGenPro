@@ -16,7 +16,7 @@ class GlobalNavbar {
         if (fileName === 'certificate-generator.php') return 'generar';
         if (fileName === 'certificados.html' || fileName === 'certificados.php') return 'certificados';
         if (fileName === 'crud.html' || fileName === 'crud.php') return 'gestion';
-        if (fileName === 'admin-panel.html') return 'admin';
+        if (fileName === 'admin-panel.html' || fileName === 'admin-panel.php') return 'admin';
         
         return 'otros';
     }
@@ -41,7 +41,7 @@ class GlobalNavbar {
                         ${this.getNavButton('generar', 'certificate-generator.php', 'fa-plus-circle', 'Generar', 'emerald')}
                         ${this.getNavButton('certificados', 'certificados.php', 'fa-file-alt', 'Certificados', 'orange')}
                         ${this.getNavButton('gestion', 'crud.php', 'fa-database', 'Gestión', 'blue')}
-                        ${this.getNavButton('admin', 'admin-panel.html', 'fa-cog', 'Admin', 'gray')}
+                        ${this.getNavButton('admin', 'admin-panel.php', 'fa-cog', 'Admin', 'gray')}
                         ${this.getUserInfo()}
                         <span class="text-sm text-gray-500">v2.0</span>
                     </div>
@@ -61,7 +61,7 @@ class GlobalNavbar {
                         ${this.getMobileNavButton('generar', 'certificate-generator.php', 'fa-plus-circle', 'Generar')}
                         ${this.getMobileNavButton('certificados', 'certificados.php', 'fa-file-alt', 'Certificados')}
                         ${this.getMobileNavButton('gestion', 'crud.php', 'fa-database', 'Gestión')}
-                        ${this.getMobileNavButton('admin', 'admin-panel.html', 'fa-cog', 'Admin')}
+                        ${this.getMobileNavButton('admin', 'admin-panel.php', 'fa-cog', 'Admin')}
                         <div class="pt-2 border-t border-gray-200">
                             ${this.getUserInfo()}
                         </div>

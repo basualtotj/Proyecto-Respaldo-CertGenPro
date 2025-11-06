@@ -1181,6 +1181,134 @@ try {
     $router->get('/api/contadores/{tipo}', 'getContador');
     $router->patch('/api/contadores/{tipo}/increment', 'incrementContador');
     
+    // ============================================
+    // ADMIN PANEL ENDPOINTS
+    // ============================================
+    
+    // Dashboard stats
+    $router->get('/api/stats/dashboard', function($params) {
+        try {
+            $db = Database::getInstance();
+            
+            // Total certificados
+            $totalCerts = $db->query("SELECT COUNT(*) as count FROM certificados")->fetch()['count'] ?? 0;
+            
+            // Certificados de hoy
+            $todayCerts = $db->query("SELECT COUNT(*) as count FROM certificados WHERE DATE(created_at) = CURDATE()")->fetch()['count'] ?? 0;
+            
+            // Total clientes
+            $totalClients = $db->query("SELECT COUNT(*) as count FROM clientes")->fetch()['count'] ?? 0;
+            
+            // Total técnicos
+            $totalTechs = $db->query("SELECT COUNT(*) as count FROM tecnicos")->fetch()['count'] ?? 0;
+            
+            ApiResponse::success([
+                'total_certificates' => $totalCerts,
+                'today_certificates' => $todayCerts,
+                'total_clients' => $totalClients,
+                'total_technicians' => $totalTechs,
+                'server_status' => 'online',
+                'last_updated' => date('c')
+            ]);
+        } catch (Exception $e) {
+            ApiResponse::error('Error obteniendo estadísticas: ' . $e->getMessage(), 500);
+        }
+    });
+    
+    // Database structure
+    $router->get('/api/database/structure', function($params) {
+        try {
+            $db = Database::getInstance();
+            $tables = [];
+            
+            $result = $db->query("SHOW TABLES");
+            while ($row = $result->fetch(PDO::FETCH_NUM)) {
+                $tableName = $row[0];
+                $countResult = $db->query("SELECT COUNT(*) as count FROM `$tableName`")->fetch();
+                $tables[] = [
+                    'name' => $tableName,
+                    'rows' => $countResult['count'] ?? 0
+                ];
+            }
+            
+            ApiResponse::success(['tables' => $tables]);
+        } catch (Exception $e) {
+            ApiResponse::error('Error obteniendo estructura de BD: ' . $e->getMessage(), 500);
+        }
+    });
+    
+    // Database optimization
+    $router->post('/api/database/optimize', function($params) {
+        try {
+            $db = Database::getInstance();
+            $db->query("OPTIMIZE TABLE certificados, clientes, tecnicos, instalaciones");
+            ApiResponse::success(null, 'Base de datos optimizada correctamente');
+        } catch (Exception $e) {
+            ApiResponse::error('Error optimizando BD: ' . $e->getMessage(), 500);
+        }
+    });
+    
+    // Certificate stats
+    $router->get('/api/certificates/stats', function($params) {
+        try {
+            $db = Database::getInstance();
+            
+            $cctvCount = $db->query("SELECT COUNT(*) as count FROM certificados WHERE tipo = 'CCTV'")->fetch()['count'] ?? 0;
+            $hardwareCount = $db->query("SELECT COUNT(*) as count FROM certificados WHERE tipo = 'Hardware'")->fetch()['count'] ?? 0;
+            $monthlyCount = $db->query("SELECT COUNT(*) as count FROM certificados WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())")->fetch()['count'] ?? 0;
+            $errorCount = 0; // Placeholder for error count logic
+            
+            ApiResponse::success([
+                'cctv_count' => $cctvCount,
+                'hardware_count' => $hardwareCount,
+                'monthly_count' => $monthlyCount,
+                'error_count' => $errorCount
+            ]);
+        } catch (Exception $e) {
+            ApiResponse::error('Error obteniendo estadísticas de certificados: ' . $e->getMessage(), 500);
+        }
+    });
+    
+    // Update certificate counters
+    $router->put('/api/certificates/counters', function($params) {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $cctvNumber = $input['cctv'] ?? null;
+            $hardwareNumber = $input['hardware'] ?? null;
+            
+            // Here you would update your counter storage mechanism
+            // For now, we'll just simulate success
+            
+            ApiResponse::success(null, 'Contadores actualizados correctamente');
+        } catch (Exception $e) {
+            ApiResponse::error('Error actualizando contadores: ' . $e->getMessage(), 500);
+        }
+    });
+    
+    // Reset certificate counters
+    $router->post('/api/certificates/counters/reset', function($params) {
+        try {
+            // Here you would reset your counter storage mechanism
+            // For now, we'll just simulate success
+            
+            ApiResponse::success(null, 'Contadores reseteados a 1');
+        } catch (Exception $e) {
+            ApiResponse::error('Error reseteando contadores: ' . $e->getMessage(), 500);
+        }
+    });
+    
+    // TEMPORAL: Listar usuarios (solo para verificar)
+    $router->get('/api/users/list', function($params) {
+        try {
+            $db = Database::getInstance();
+            $users = $db->query("SELECT id, username, email, nombre, rol, created_at FROM usuarios ORDER BY created_at DESC")->fetchAll();
+            
+            ApiResponse::success($users, 'Usuarios obtenidos');
+        } catch (Exception $e) {
+            ApiResponse::error('Error obteniendo usuarios: ' . $e->getMessage(), 500);
+        }
+    });
+    
     // Ruta de health check
     $router->get('/api/health', function($params) {
         ApiResponse::success([

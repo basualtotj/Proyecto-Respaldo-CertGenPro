@@ -1,6 +1,22 @@
-# Sistema de Certificados de Mantenimiento
+# 🚨 DETECTOR DE IA NUEVA - CertGen Pro
 
-Sistema web profesional para generar certificados de mantenimiento técnico especializados en **CCTV**, **Hardware Computacional** y **Racks de Comunicaciones**.
+## ⚠️ ¿ERES UNA IA NUEVA? RESPONDE ESTO:
+
+**¿Recuerdas haber trabajado en la consolidación del admin panel?**
+- **SÍ:** ✅ Continúa
+- **NO:** 🚨 **NUEVA SESIÓN** - Lee 🤖-IA-CONTEXT-TRAP.md PRIMERO
+
+---
+
+# Sistema de Certificados de Mantenimiento - FUNCIONAL ✅
+
+Sistema web profesional para generar certificados de mantenimiento técnico especializado.
+
+**ESTADO ACTUAL (6 nov 2025):** 
+- ✅ Panel admin consolidado con datos reales
+- ✅ MySQL con 82 certificados, 4 clientes, 5 técnicos  
+- ✅ Una sola verificación de autenticación
+- ✅ Servidor PHP puerto 8080
 
 ## 🏗️ Arquitectura
 

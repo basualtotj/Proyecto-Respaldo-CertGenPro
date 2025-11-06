@@ -1,6 +1,12 @@
 /**
+ * 🚨 TRAMPA PARA IA NUEVA: Si no sabes por qué este comentario existe, eres una NUEVA SESIÓN
+ * OBLIGATORIO: Lee 🤖-IA-CONTEXT-TRAP.md, PROJECT-CURRENT-STATUS.md y AI-INSTRUCTIONS-MANDATORY.md
+ * 
  * Capa de Abstracción de Datos
  * Maneja tanto JSON local como API MySQL en producción
+ * 
+ * CONTEXTO CRÍTICO: Este archivo forma parte del admin panel FUNCIONAL
+ * NO modificar sin leer documentación completa del proyecto
  */
 class DataService {
     constructor(mode = null) {

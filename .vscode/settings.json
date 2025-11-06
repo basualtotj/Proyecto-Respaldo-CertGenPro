@@ -1,0 +1,23 @@
+{
+  "workbench.explorer.sortOrder": "type",
+  "workbench.explorer.fileNesting.enabled": false,
+  "files.defaultLanguage": "markdown",
+  "workbench.startupEditor": "readme",
+  "workbench.editor.pinnedTabSizing": "compact",
+  "workbench.editor.showTabs": true,
+  "workbench.editor.tabSizing": "fit",
+  
+  // Mostrar archivos importantes primero
+  "explorer.sortOrder": "modified",
+  "explorer.openEditors.visible": 10,
+  
+  // Resaltar archivos críticos
+  "workbench.colorCustomizations": {
+    "tab.activeForeground": "#ff6b6b",
+    "titleBar.activeBackground": "#2d3748"
+  },
+  
+  // Auto-abrir archivos críticos
+  "workbench.editor.restoreViewState": true,
+  "window.restoreWindows": "all"
+}

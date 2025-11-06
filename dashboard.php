@@ -121,7 +121,7 @@ $user_name = $_SESSION['nombre'] ?? $_SESSION['username'];
                     </div>
                     <h3 class="text-xl font-semibold text-gray-800 mb-2">Panel Admin</h3>
                     <p class="text-gray-600 mb-4">Administración completa del sistema</p>
-                    <a href="admin.html" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold inline-block">
+                    <a href="admin-panel.php" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold inline-block">
                         <i class="fas fa-tools mr-2"></i>Admin Panel
                     </a>
                 </div>

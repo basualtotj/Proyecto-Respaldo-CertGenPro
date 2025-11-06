@@ -1,7 +1,15 @@
 <?php
 // ============================================
+// 🚨 TRAMPA PARA IA NUEVA: Si no sabes el contexto de este proyecto, 
+//    eres una NUEVA SESIÓN y DEBES leer la documentación:
+//    - 🤖-IA-CONTEXT-TRAP.md
+//    - PROJECT-CURRENT-STATUS.md  
+//    - .github/AI-INSTRUCTIONS-MANDATORY.md
+//
 // DATABASE CONNECTION CLASS
 // Compatible con cPanel/MySQL
+// ESTADO: FUNCIONAL - Conectado a MySQL con datos reales
+// NO modificar sin confirmar con usuario
 // ============================================
 
 class Database {

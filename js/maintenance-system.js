@@ -1483,8 +1483,60 @@ class MaintenanceCertificateSystem {
      * Generar PDF del certificado
      */
     async generatePDF() {
-    // PDF deshabilitado: no hacer nada
-    return;
+        try {
+            if (!this.currentCertificateType) {
+                alert('Debe seleccionar un tipo de certificado');
+                return;
+            }
+
+            // Recopilar datos del formulario
+            const certificateData = this.buildCertificatePayload();
+            
+            // Agregar datos adicionales necesarios para PDF
+            certificateData.cliente = this.clientes.find(c => c.id == certificateData.cliente_id);
+            certificateData.instalacion = this.clientes
+                .find(c => c.id == certificateData.cliente_id)?.instalaciones
+                .find(i => i.id == certificateData.instalacion_id);
+            certificateData.tecnico = this.tecnicos.find(t => t.id == certificateData.tecnico_id);
+            certificateData.fecha = certificateData.fecha_mantenimiento;
+            certificateData.codigoValidacion = this.generateValidationCode();
+            certificateData.evidencias = this.evidencias;
+            certificateData.empresa = this.empresa;
+
+            // Generar PDF según el tipo
+            let pdfGenerator;
+            let doc;
+
+            switch (this.currentCertificateType) {
+                case 'cctv':
+                    pdfGenerator = new window.CCTVPdfGenerator();
+                    doc = await pdfGenerator.generateCCTVPDF(certificateData);
+                    break;
+                case 'hardware':
+                    pdfGenerator = new window.HardwarePdfGenerator();
+                    doc = await pdfGenerator.generateHardwarePDF(certificateData);
+                    break;
+                case 'racks':
+                    pdfGenerator = new window.RacksPdfGenerator();
+                    doc = await pdfGenerator.generateRacksPDF(certificateData);
+                    break;
+                default:
+                    throw new Error('Tipo de certificado no válido');
+            }
+
+            // Descargar PDF
+            const fileName = `certificado_${this.currentCertificateType}_${Date.now()}.pdf`;
+            doc.save(fileName);
+
+            // Opcional: Guardar en base de datos
+            if (this.dataService) {
+                await this.saveCertificateToDatabase(certificateData);
+            }
+
+        } catch (error) {
+            console.error('Error generando PDF:', error);
+            alert('Error al generar el PDF: ' + error.message);
+        }
     }
 
     /**
@@ -1497,7 +1549,7 @@ class MaintenanceCertificateSystem {
      */
     buildCertificatePayload() {
         const fd = this.getFormData();
-        return {
+        const payload = {
             tipo: this.currentCertificateType,
             cliente_id: Number(fd.cliente_id),
             instalacion_id: Number(fd.instalacion_id),
@@ -1508,9 +1560,12 @@ class MaintenanceCertificateSystem {
             firmas: {
                 tecnico: this.signatures.tecnico || null,
                 cliente: this.signatures.cliente || null
-            },
-            // Guardar checklist y equipos dentro de checklist_data para poder restaurarlos luego
-            checklist_data: {
+            }
+        };
+
+        // Agregar datos específicos según el tipo
+        if (this.currentCertificateType === 'cctv') {
+            payload.checklist_data = {
                 checklist: Array.isArray(fd.cctv?.checklist) ? fd.cctv.checklist : [],
                 equipos: {
                     camaras_ip: (fd.cctv?.camaras_ip ?? document.getElementById('camarasIP')?.value) || '',
@@ -1520,8 +1575,76 @@ class MaintenanceCertificateSystem {
                     dvr: (fd.cctv?.dvr ?? document.getElementById('dvr')?.value) || '',
                     joystick: document.getElementById('joystick')?.value || ''
                 }
-            }
-        };
+            };
+            // Copiar datos CCTV al payload principal para PDF
+            payload.camarasIP = payload.checklist_data.equipos.camaras_ip;
+            payload.camarasAnalogicas = payload.checklist_data.equipos.camaras_analogicas;
+            payload.monitores = payload.checklist_data.equipos.monitores;
+            payload.nvr = payload.checklist_data.equipos.nvr;
+            payload.dvr = payload.checklist_data.equipos.dvr;
+            payload.joystick = payload.checklist_data.equipos.joystick;
+            payload.cctvCheck = this.getCheckedValues('cctvCheck');
+        } else if (this.currentCertificateType === 'hardware') {
+            payload.hardware_data = {
+                equipos: {
+                    pcs: document.querySelector('input[name="hardwarePCs"]')?.value || '',
+                    notebooks: document.querySelector('input[name="hardwareNotebooks"]')?.value || '',
+                    servidores: document.querySelector('input[name="hardwareServidores"]')?.value || '',
+                    ups: document.querySelector('input[name="hardwareUPS"]')?.value || '',
+                    area: document.querySelector('input[name="hardwareArea"]')?.value || ''
+                },
+                checklist: this.getCheckedValues('hardwareCheck')
+            };
+            // Copiar datos Hardware al payload principal para PDF
+            payload.hardwarePCs = payload.hardware_data.equipos.pcs;
+            payload.hardwareNotebooks = payload.hardware_data.equipos.notebooks;
+            payload.hardwareServidores = payload.hardware_data.equipos.servidores;
+            payload.hardwareUPS = payload.hardware_data.equipos.ups;
+            payload.hardwareArea = payload.hardware_data.equipos.area;
+            payload.hardwareCheck = payload.hardware_data.checklist;
+        } else if (this.currentCertificateType === 'racks') {
+            payload.racks_data = {
+                equipos: {
+                    racks: document.querySelector('input[name="racksUnits"]')?.value || '',
+                    switches: document.querySelector('input[name="racksSwitches"]')?.value || '',
+                    routers: document.querySelector('input[name="racksRouters"]')?.value || '',
+                    ups: document.querySelector('input[name="racksUPS"]')?.value || '',
+                    nvr: document.querySelector('input[name="racksNVR"]')?.value || '',
+                    central: document.querySelector('input[name="racksCentral"]')?.value || '',
+                    patch_panels: document.querySelector('input[name="racksPatchPanels"]')?.value || '',
+                    monitor: document.querySelector('input[name="racksMonitor"]')?.value || '',
+                    estabilizador: document.querySelector('input[name="racksEstabilizador"]')?.value || '',
+                    router_isp: document.querySelector('input[name="racksRouterISP"]')?.value || '',
+                    servidores: document.querySelector('input[name="racksServidores"]')?.value || '',
+                    area: document.querySelector('input[name="racksArea"]')?.value || ''
+                },
+                checklist: this.getCheckedValues('racksCheck')
+            };
+            // Copiar datos Racks al payload principal para PDF
+            payload.racksUnits = payload.racks_data.equipos.racks;
+            payload.racksSwitches = payload.racks_data.equipos.switches;
+            payload.racksRouters = payload.racks_data.equipos.routers;
+            payload.racksUPS = payload.racks_data.equipos.ups;
+            payload.racksNVR = payload.racks_data.equipos.nvr;
+            payload.racksCentral = payload.racks_data.equipos.central;
+            payload.racksPatchPanels = payload.racks_data.equipos.patch_panels;
+            payload.racksMonitor = payload.racks_data.equipos.monitor;
+            payload.racksEstabilizador = payload.racks_data.equipos.estabilizador;
+            payload.racksRouterISP = payload.racks_data.equipos.router_isp;
+            payload.racksServidores = payload.racks_data.equipos.servidores;
+            payload.racksArea = payload.racks_data.equipos.area;
+            payload.racksCheck = payload.racks_data.checklist;
+        }
+
+        return payload;
+    }
+
+    /**
+     * Obtener valores marcados de un grupo de checkboxes
+     */
+    getCheckedValues(name) {
+        const checkboxes = document.querySelectorAll(`input[name="${name}"]:checked`);
+        return Array.from(checkboxes).map(checkbox => checkbox.value);
     }
 
     /**
@@ -2424,6 +2547,41 @@ class MaintenanceCertificateSystem {
                 img.src = src;
             } catch (e) { reject(e); }
         });
+    }
+
+    /**
+     * Generar código de validación único
+     */
+    generateValidationCode() {
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substr(2, 5);
+        const type = this.currentCertificateType.toUpperCase().substr(0, 3);
+        return `${type}-${timestamp}-${random}`.toUpperCase();
+    }
+
+    /**
+     * Guardar certificado en base de datos
+     */
+    async saveCertificateToDatabase(certificateData) {
+        try {
+            if (!this.dataService) {
+                console.warn('DataService no disponible, certificado no guardado en BD');
+                return;
+            }
+
+            const saveData = {
+                ...certificateData,
+                fecha_creacion: new Date().toISOString(),
+                estado: 'generado'
+            };
+
+            // Intentar guardar usando la API
+            await this.dataService.saveCertificate(saveData);
+            console.log('✅ Certificado guardado en base de datos');
+        } catch (error) {
+            console.warn('⚠️ Error guardando certificado en BD:', error);
+            // No bloquear la generación del PDF por errores de BD
+        }
     }
 }
 
