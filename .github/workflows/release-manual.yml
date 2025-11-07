@@ -1,0 +1,40 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag existente (ej: v2025.11.07-backup-full)'
+        required: true
+      release_name:
+        description: 'Nombre del Release'
+        required: true
+      draft:
+        description: 'Crear como draft (true/false)'
+        required: false
+        default: 'false'
+      prerelease:
+        description: 'Marcar como pre-release (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.tag_name }}
+          name: ${{ github.event.inputs.release_name }}
+          draft: ${{ github.event.inputs.draft }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          body: |
+            Release generado manualmente desde workflow.
+            Tag: ${{ github.event.inputs.tag_name }}
+            Snapshot completo del proyecto (instrucciones, PDFs, backend API-only, validación).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
