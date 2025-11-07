@@ -678,6 +678,8 @@ class MaintenanceCertificateSystem {
         // Mostrar el formulario correspondiente
         if (this.currentCertificateType) {
             document.getElementById(`${this.currentCertificateType}Form`).classList.remove('hidden');
+            // Inicializar manejadores específicos (ej: botón Marcar todos Hardware)
+            this.initTypeSpecificHandlers();
         }
     }
 
@@ -902,7 +904,7 @@ class MaintenanceCertificateSystem {
             ? this.evidencias.map(e => ({ src: e.src, orientation: e.orientation, w: e.w, h: e.h }))
             : [];
 
-    // Datos específicos CCTV
+        // Datos específicos CCTV
         if (this.currentCertificateType === 'cctv') {
             data.cctv = {
                 camaras_analogicas: document.getElementById('camarasAnalogicas')?.value || 0,
@@ -915,7 +917,62 @@ class MaintenanceCertificateSystem {
             };
         }
 
+        // Datos específicos Hardware
+        if (this.currentCertificateType === 'hardware') {
+            data.hardwarePCs = parseInt(document.getElementById('hardwarePCs')?.value || '0', 10);
+            data.hardwareNotebooks = parseInt(document.getElementById('hardwareNotebooks')?.value || '0', 10);
+            data.hardwareServidores = parseInt(document.getElementById('hardwareServidores')?.value || '0', 10);
+            data.hardwareUPS = parseInt(document.getElementById('hardwareUPS')?.value || '0', 10);
+            data.hardwareArea = document.getElementById('hardwareArea')?.value || '';
+            data.hardwareCheck = Array.from(document.querySelectorAll('input[name="hardwareCheck"]:checked')).map(cb => cb.value);
+        }
+
+        // Datos específicos Racks
+        if (this.currentCertificateType === 'racks') {
+            data.racksUnits = parseInt(document.getElementById('racksUnits')?.value || '0', 10);
+            data.racksSwitches = parseInt(document.getElementById('racksSwitches')?.value || '0', 10);
+            data.racksRouters = parseInt(document.getElementById('racksRouters')?.value || '0', 10);
+            data.racksUPS = parseInt(document.getElementById('racksUPS')?.value || '0', 10);
+            data.racksNVR = parseInt(document.getElementById('racksNVR')?.value || '0', 10);
+            data.racksCentral = parseInt(document.getElementById('racksCentral')?.value || '0', 10);
+            data.racksPatchPanels = parseInt(document.getElementById('racksPatchPanels')?.value || '0', 10);
+            data.racksMonitor = parseInt(document.getElementById('racksMonitor')?.value || '0', 10);
+            data.racksEstabilizador = parseInt(document.getElementById('racksEstabilizador')?.value || '0', 10);
+            data.racksRouterISP = parseInt(document.getElementById('racksRouterISP')?.value || '0', 10);
+            data.racksServidores = parseInt(document.getElementById('racksServidores')?.value || '0', 10);
+            data.racksArea = document.getElementById('racksArea')?.value || '';
+            data.racksCheck = Array.from(document.querySelectorAll('input[name="racksCheck"]:checked')).map(cb => cb.value);
+        }
+
         return data;
+    }
+
+    /**
+     * Inicializar manejadores específicos por tipo
+     * (llamar tras renderizar/mostrar formulario)
+     */
+    initTypeSpecificHandlers() {
+        // Hardware: botón Marcar todos
+        const toggleAllBtn = document.getElementById('hardwareCheckToggleAll');
+        if (toggleAllBtn) {
+            toggleAllBtn.onclick = (e) => {
+                e.preventDefault();
+                const checks = Array.from(document.querySelectorAll('input[name="hardwareCheck"]'));
+                const allChecked = checks.every(cb => cb.checked);
+                checks.forEach(cb => { cb.checked = !allChecked; });
+            };
+        }
+
+        // Racks: botón Marcar todos
+        const racksToggleAllBtn = document.getElementById('racksCheckToggleAll');
+        if (racksToggleAllBtn) {
+            racksToggleAllBtn.onclick = (e) => {
+                e.preventDefault();
+                const checks = Array.from(document.querySelectorAll('input[name="racksCheck"]'));
+                const allChecked = checks.every(cb => cb.checked);
+                checks.forEach(cb => { cb.checked = !allChecked; });
+            };
+        }
     }
 
     /**
@@ -1366,8 +1423,8 @@ class MaintenanceCertificateSystem {
         this.assignedCertificateId = created.id;
         this.assignedCertificateNumber = created.numero_certificado;
 
-        // Generar PDF vectorial (solo CCTV por ahora)
-        if (this.currentCertificateType === 'cctv') {
+    // Generar PDF vectorial según tipo
+    if (this.currentCertificateType === 'cctv') {
             const generator = new (window.CCTVPdfGenerator)();
             const formData = this.getFormData();
             const info = this.getClienteInstalacionInfo();
@@ -1414,8 +1471,69 @@ class MaintenanceCertificateSystem {
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(a.href), 4000);
             } catch {}
-        } else {
-            this.showError('Generador PDF vectorial activo solo para CCTV en esta versión');
+        } else if (this.currentCertificateType === 'hardware') {
+            // Generar PDF con HardwarePdfGenerator
+            const pdfGen = new window.HardwarePdfGenerator();
+            // Construir datos similares a certificateData en generatePDF()
+            const certificateData = this.buildCertificatePayload();
+            certificateData.cliente = this.clientes.find(c => c.id == certificateData.cliente_id);
+            certificateData.instalacion = this.clientes
+                .find(c => c.id == certificateData.cliente_id)?.instalaciones
+                .find(i => i.id == certificateData.instalacion_id);
+            certificateData.tecnico = this.tecnicos.find(t => t.id == certificateData.tecnico_id);
+            certificateData.fecha = certificateData.fecha_mantenimiento;
+            certificateData.numeroCertificado = this.assignedCertificateNumber;
+            certificateData.codigoValidacion = created.codigo_validacion || created.codigoValidacion || created.validation_code || this.generateValidationCode();
+            certificateData.evidencias = this.evidencias;
+            certificateData.empresa = this.empresa;
+
+            const doc = await pdfGen.generateHardwarePDF(certificateData);
+            // Subir al backend
+            try {
+                const blob = doc.output('blob');
+                await fetch(`${this.dataService.apiUrl}/certificados/${this.assignedCertificateId}/pdf`, {
+                    method: 'POST',
+                    body: blob
+                });
+            } catch (e) {
+                console.warn('No se pudo subir el PDF de hardware al backend:', e?.message || e);
+            }
+            // Descargar localmente
+            try {
+                const fileName = `${this.assignedCertificateNumber || Date.now()}.pdf`;
+                doc.save(fileName);
+            } catch {}
+        } else if (this.currentCertificateType === 'racks') {
+            // Generar PDF con RacksPdfGenerator
+            const pdfGen = new window.RacksPdfGenerator();
+            const certificateData = this.buildCertificatePayload();
+            certificateData.cliente = this.clientes.find(c => c.id == certificateData.cliente_id);
+            certificateData.instalacion = this.clientes
+                .find(c => c.id == certificateData.cliente_id)?.instalaciones
+                .find(i => i.id == certificateData.instalacion_id);
+            certificateData.tecnico = this.tecnicos.find(t => t.id == certificateData.tecnico_id);
+            certificateData.fecha = certificateData.fecha_mantenimiento;
+            certificateData.numeroCertificado = this.assignedCertificateNumber;
+            certificateData.codigoValidacion = created.codigo_validacion || created.codigoValidacion || created.validation_code || this.generateValidationCode();
+            certificateData.evidencias = this.evidencias;
+            certificateData.empresa = this.empresa;
+
+            const doc = await pdfGen.generateRacksPDF(certificateData);
+            // Subir al backend
+            try {
+                const blob = doc.output('blob');
+                await fetch(`${this.dataService.apiUrl}/certificados/${this.assignedCertificateId}/pdf`, {
+                    method: 'POST',
+                    body: blob
+                });
+            } catch (e) {
+                console.warn('No se pudo subir el PDF de racks al backend:', e?.message || e);
+            }
+            // Descargar localmente
+            try {
+                const fileName = `${this.assignedCertificateNumber || Date.now()}.pdf`;
+                doc.save(fileName);
+            } catch {}
         }
 
         // Guardar en caché como último certificado para esta instalación
@@ -1587,14 +1705,16 @@ class MaintenanceCertificateSystem {
         } else if (this.currentCertificateType === 'hardware') {
             payload.hardware_data = {
                 equipos: {
-                    pcs: document.querySelector('input[name="hardwarePCs"]')?.value || '',
-                    notebooks: document.querySelector('input[name="hardwareNotebooks"]')?.value || '',
-                    servidores: document.querySelector('input[name="hardwareServidores"]')?.value || '',
-                    ups: document.querySelector('input[name="hardwareUPS"]')?.value || '',
-                    area: document.querySelector('input[name="hardwareArea"]')?.value || ''
+                    pcs: document.getElementById('hardwarePCs')?.value || '',
+                    notebooks: document.getElementById('hardwareNotebooks')?.value || '',
+                    servidores: document.getElementById('hardwareServidores')?.value || '',
+                    ups: document.getElementById('hardwareUPS')?.value || '',
+                    area: document.getElementById('hardwareArea')?.value || ''
                 },
                 checklist: this.getCheckedValues('hardwareCheck')
             };
+            // Unificar clave genérica para backend (como CCTV)
+            payload.checklist_data = payload.hardware_data;
             // Copiar datos Hardware al payload principal para PDF
             payload.hardwarePCs = payload.hardware_data.equipos.pcs;
             payload.hardwareNotebooks = payload.hardware_data.equipos.notebooks;
@@ -1605,21 +1725,23 @@ class MaintenanceCertificateSystem {
         } else if (this.currentCertificateType === 'racks') {
             payload.racks_data = {
                 equipos: {
-                    racks: document.querySelector('input[name="racksUnits"]')?.value || '',
-                    switches: document.querySelector('input[name="racksSwitches"]')?.value || '',
-                    routers: document.querySelector('input[name="racksRouters"]')?.value || '',
-                    ups: document.querySelector('input[name="racksUPS"]')?.value || '',
-                    nvr: document.querySelector('input[name="racksNVR"]')?.value || '',
-                    central: document.querySelector('input[name="racksCentral"]')?.value || '',
-                    patch_panels: document.querySelector('input[name="racksPatchPanels"]')?.value || '',
-                    monitor: document.querySelector('input[name="racksMonitor"]')?.value || '',
-                    estabilizador: document.querySelector('input[name="racksEstabilizador"]')?.value || '',
-                    router_isp: document.querySelector('input[name="racksRouterISP"]')?.value || '',
-                    servidores: document.querySelector('input[name="racksServidores"]')?.value || '',
-                    area: document.querySelector('input[name="racksArea"]')?.value || ''
+                    racks: document.getElementById('racksUnits')?.value || '',
+                    switches: document.getElementById('racksSwitches')?.value || '',
+                    routers: document.getElementById('racksRouters')?.value || '',
+                    ups: document.getElementById('racksUPS')?.value || '',
+                    nvr: document.getElementById('racksNVR')?.value || '',
+                    central: document.getElementById('racksCentral')?.value || '',
+                    patch_panels: document.getElementById('racksPatchPanels')?.value || '',
+                    monitor: document.getElementById('racksMonitor')?.value || '',
+                    estabilizador: document.getElementById('racksEstabilizador')?.value || '',
+                    router_isp: document.getElementById('racksRouterISP')?.value || '',
+                    servidores: document.getElementById('racksServidores')?.value || '',
+                    area: document.getElementById('racksArea')?.value || ''
                 },
                 checklist: this.getCheckedValues('racksCheck')
             };
+            // Unificar clave genérica para backend
+            payload.checklist_data = payload.racks_data;
             // Copiar datos Racks al payload principal para PDF
             payload.racksUnits = payload.racks_data.equipos.racks;
             payload.racksSwitches = payload.racks_data.equipos.switches;

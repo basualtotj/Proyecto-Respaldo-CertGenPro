@@ -160,6 +160,7 @@ class AuthGuard {
         document.body.appendChild(userIndicator);
         console.log('✅ Info de usuario agregada al DOM');
         */
+    }
 
     async logout() {
         try {

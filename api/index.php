@@ -859,6 +859,16 @@ function createCertificado($params) {
             $data['checklist_data'] = json_encode($data['checklist_data']);
         }
 
+        // Podrían venir campos auxiliares del frontend (hardware_data, racks_data y copias planas)
+        // El modelo Certificado.create ya filtra, pero algunos drivers loguean el SQL armado con campos extra.
+        // Para evitar cualquier "Unknown column" en logs/consultas, purgamos explícitamente aquí.
+        $allowed = ['numero_certificado','codigo_validacion','tipo','cliente_id','instalacion_id','tecnico_id','fecha_mantenimiento','solicitudes_cliente','observaciones_generales','checklist_data','estado','firma_tecnico','firma_cliente','fecha_emision'];
+        foreach ($data as $k => $v) {
+            if (!in_array($k, $allowed, true)) {
+                unset($data[$k]);
+            }
+        }
+
         // Generar correlativo en el backend y persistir de forma atómica
         $db = Database::getInstance();
         $db->beginTransaction();
@@ -1127,6 +1137,14 @@ function downloadCertificadoPDF($params) {
 
 try {
     $router = new Router();
+    
+    // Health check (para verificación de DataService)
+    $router->get('/api/health', function() {
+        ApiResponse::success([
+            'status' => 'ok',
+            'time' => date('c')
+        ], 'API viva');
+    });
     
     // Clientes
     $router->get('/api/clientes', 'getClientes');

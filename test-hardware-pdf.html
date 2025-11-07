@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Test Hardware PDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="js/pdf/hardware-pdf.js"></script>
+  <style>body{font-family:system-ui,Arial,sans-serif;padding:1rem;}button{background:#2563eb;color:#fff;border:none;padding:.6rem 1rem;border-radius:.4rem;cursor:pointer;}button:hover{background:#1d4ed8}</style>
+</head>
+<body>
+  <h1>Prueba rápida HardwarePdfGenerator</h1>
+  <p>Genera un PDF con datos simulados para validar inventario y checklist.</p>
+  <button id="gen">Generar PDF de prueba</button>
+  <script>
+    document.getElementById('gen').onclick = async () => {
+      if(!window.HardwarePdfGenerator){alert('No está cargado HardwarePdfGenerator');return;}
+      const generator = new window.HardwarePdfGenerator();
+      const sample = {
+        cliente: { nombre: 'Cliente Demo', rut: '11.111.111-1', contacto: 'Juan Pérez' },
+        instalacion: { direccion: 'Av. Siempre Viva 742' },
+        tecnico: { nombre: 'Técnico Demo' },
+        fecha: '2025-11-06',
+        codigoValidacion: 'ABC123DEF',
+        empresa: { logo: null },
+        hardwarePCs: 5,
+        hardwareNotebooks: 3,
+        hardwareServidores: 2,
+        hardwareUPS: 1,
+        hardwareArea: 'Oficina Principal',
+        hardwareCheck: [
+          'limpieza_interna',
+          'revision_componentes',
+          'pasta_termica',
+          'ventiladores',
+          'fuentes_poder',
+          'fijaciones_soportes',
+          'limpieza_externa',
+          'revision_ups',
+          'funcionamiento_general'
+        ],
+        observaciones: 'Se realizó mantenimiento preventivo completo sin incidencias.'
+      };
+      try {
+        const doc = await generator.generateHardwarePDF(sample);
+        doc.save('test_hardware.pdf');
+      } catch(err){
+        console.error(err);
+        alert('Error generando PDF');
+      }
+    };
+  </script>
+</body>
+</html>

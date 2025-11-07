@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Certificados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-gray-100">
+    
+    <!-- Navbar Container -->
+    <div id="navbar-container"></div>
+    
+    <!-- Test Content -->
+    <div class="max-w-4xl mx-auto p-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Test de Sistema de Certificados</h1>
+        
+        <!-- Botones de Tipo -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <button type="button" class="certificate-type-btn bg-blue-50 border-2 border-blue-500 rounded-xl p-6 hover:bg-blue-100 transition-all" data-type="cctv">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-video text-white text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Sistemas CCTV</h4>
+                    <p class="text-sm text-gray-600">Cámaras, DVR/NVR, Monitores</p>
+                </div>
+            </button>
+            
+            <button type="button" class="certificate-type-btn border-2 border-gray-200 rounded-xl p-6 hover:bg-gray-50 transition-all" data-type="hardware">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-desktop text-white text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Hardware Computacional</h4>
+                    <p class="text-sm text-gray-600">Servidores, PCs, Componentes</p>
+                </div>
+            </button>
+            
+            <button type="button" class="certificate-type-btn border-2 border-gray-200 rounded-xl p-6 hover:bg-gray-50 transition-all" data-type="racks">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-server text-white text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Racks de Comunicaciones</h4>
+                    <p class="text-sm text-gray-600">Switches, Routers, Cableado</p>
+                </div>
+            </button>
+        </div>
+
+        <!-- Área de Formularios -->
+        <div id="form-area" class="bg-white rounded-lg shadow p-6">
+            <div id="selectTypeMessage" class="text-center text-gray-500">
+                Selecciona un tipo de certificado para comenzar
+            </div>
+            
+            <!-- Formulario CCTV -->
+            <div id="cctvForm" class="hidden">
+                <h3 class="text-xl font-bold text-blue-600 mb-4">Formulario CCTV</h3>
+                <p>Formulario para sistemas CCTV cargado correctamente.</p>
+            </div>
+            
+            <!-- Formulario Hardware -->
+            <div id="hardwareForm" class="hidden">
+                <h3 class="text-xl font-bold text-green-600 mb-4">Formulario Hardware</h3>
+                <p>Formulario para hardware computacional cargado correctamente.</p>
+            </div>
+            
+            <!-- Formulario Racks -->
+            <div id="racksForm" class="hidden">
+                <h3 class="text-xl font-bold text-purple-600 mb-4">Formulario Racks</h3>
+                <p>Formulario para racks de comunicaciones cargado correctamente.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/components/navbar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM cargado');
+            
+            // Inicializar navbar
+            if (typeof GlobalNavbar !== 'undefined') {
+                console.log('Inicializando navbar...');
+                const navbar = new GlobalNavbar();
+                navbar.render();
+            } else {
+                console.error('GlobalNavbar no encontrado');
+            }
+            
+            // Funcionalidad básica de botones
+            document.querySelectorAll('.certificate-type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    console.log('Tipo seleccionado:', type);
+                    
+                    // Limpiar selecciones previas
+                    document.querySelectorAll('.certificate-type-btn').forEach(b => {
+                        b.classList.remove('bg-blue-50', 'border-blue-500', 'bg-green-50', 'border-green-500', 'bg-purple-50', 'border-purple-500');
+                        b.classList.add('border-gray-200');
+                    });
+                    
+                    // Aplicar estilo al seleccionado
+                    if (type === 'cctv') {
+                        this.classList.remove('border-gray-200');
+                        this.classList.add('bg-blue-50', 'border-blue-500');
+                    } else if (type === 'hardware') {
+                        this.classList.remove('border-gray-200');
+                        this.classList.add('bg-green-50', 'border-green-500');
+                    } else if (type === 'racks') {
+                        this.classList.remove('border-gray-200');
+                        this.classList.add('bg-purple-50', 'border-purple-500');
+                    }
+                    
+                    // Mostrar formulario correspondiente
+                    document.getElementById('selectTypeMessage').classList.add('hidden');
+                    document.getElementById('cctvForm').classList.add('hidden');
+                    document.getElementById('hardwareForm').classList.add('hidden');
+                    document.getElementById('racksForm').classList.add('hidden');
+                    
+                    document.getElementById(type + 'Form').classList.remove('hidden');
+                });
+            });
+        });
+    </script>
+    
+</body>
+</html>

@@ -308,8 +308,8 @@
   ], wAligned);
   y += 3; // espacio reducido para equipos instalados
 
-      // Equipos instalados: 3 casillas + 1 columna para NVR/DVR/JOYSTICK (vertical)
-      sectionTitle('EQUIPOS INSTALADOS');
+  // Equipos atendidos: 3 casillas + 1 columna para NVR/DVR/JOYSTICK (vertical)
+  sectionTitle('EQUIPOS ATENDIDOS');
       y -= 2; // reducir espacio adicional para esta sección
       const colGap4 = 6;
       const colW4 = (W - M * 2 - colGap4 * 3) / 4; // 4 columnas

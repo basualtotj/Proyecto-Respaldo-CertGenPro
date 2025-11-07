@@ -337,31 +337,176 @@ if (!isset($_SESSION['user_id'])) {
                             </div>
                         </div>
 
-                        <!-- Formulario Hardware (placeholder) -->
+                        <!-- Formulario Hardware -->
                         <div id="hardwareForm" class="hidden">
-                            <div class="border-t border-gray-200 pt-6">
-                                <h4 class="text-lg font-semibold text-gray-900 mb-4">
-                                    <i class="fas fa-desktop text-green-600 mr-2"></i>
-                                    Mantenimiento Hardware Computacional
-                                </h4>
-                                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">
-                                    <i class="fas fa-info-circle mr-2"></i>
-                                    Formulario específico para hardware en desarrollo
-                                </p>
+                            <div class="border-t border-gray-200 pt-6 space-y-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                        <i class="fas fa-desktop text-green-600 mr-2"></i>
+                                        Mantenimiento Hardware Computacional
+                                    </h4>
+                                    <p class="text-gray-600 bg-green-50 border border-green-100 p-4 rounded-lg text-sm flex items-start">
+                                        <i class="fas fa-info-circle mr-2 mt-0.5 text-green-500"></i>
+                                        Registre el inventario básico y las verificaciones realizadas durante la mantención preventiva.
+                                    </p>
+                                </div>
+
+                                <!-- Inventario -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label for="hardwarePCs" class="block text-sm font-medium text-gray-700 mb-1">PCs Escritorio</label>
+                                        <input type="number" id="hardwarePCs" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="0">
+                                    </div>
+                                    <div>
+                                        <label for="hardwareNotebooks" class="block text-sm font-medium text-gray-700 mb-1">Notebooks</label>
+                                        <input type="number" id="hardwareNotebooks" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="0">
+                                    </div>
+                                    <div>
+                                        <label for="hardwareServidores" class="block text-sm font-medium text-gray-700 mb-1">Servidores</label>
+                                        <input type="number" id="hardwareServidores" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="0">
+                                    </div>
+                                    <div>
+                                        <label for="hardwareUPS" class="block text-sm font-medium text-gray-700 mb-1">UPS / Respaldo eléctrico</label>
+                                        <input type="number" id="hardwareUPS" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="0">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="hardwareArea" class="block text-sm font-medium text-gray-700 mb-1">Área / Dependencia</label>
+                                        <input type="text" id="hardwareArea" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="Ej: Oficina Administración">
+                                    </div>
+                                </div>
+
+                                <!-- Checklist -->
+                                <div>
+                                    <h5 class="text-md font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                                        <span class="flex items-center">
+                                            <i class="fas fa-list-check text-green-600 mr-2"></i>
+                                            Verificaciones Realizadas
+                                        </span>
+                                        <button type="button" id="hardwareCheckToggleAll" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center">
+                                            <i class="fas fa-check-double mr-1"></i>
+                                            Marcar todos
+                                        </button>
+                                    </h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="limpieza_interna" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Limpieza interna</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="revision_componentes" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Revisión de componentes</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="pasta_termica" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Pasta térmica CPU/GPU</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="ventiladores" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Ventiladores operativos</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="fuentes_poder" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Fuentes de poder</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="fijaciones_soportes" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Fijaciones/soportes/bandejas</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="limpieza_externa" class="text-green-600 focus:ring-green-500">
+                                            <span class="text-sm text-gray-700">Limpieza externa</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" name="hardwareCheck" value="funcionamiento_general" class="text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700">Prueba de funcionamiento</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Formulario Racks (placeholder) -->
+                        <!-- Formulario Racks -->
                         <div id="racksForm" class="hidden">
                             <div class="border-t border-gray-200 pt-6">
-                                <h4 class="text-lg font-semibold text-gray-900 mb-4">
+                                <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                     <i class="fas fa-server text-purple-600 mr-2"></i>
                                     Mantenimiento Racks de Comunicaciones
                                 </h4>
-                                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">
-                                    <i class="fas fa-info-circle mr-2"></i>
-                                    Formulario específico para racks en desarrollo
-                                </p>
+
+                                <!-- Inventario Racks (similar a CCTV layout) -->
+                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                                    <div>
+                                        <label for="racksUnits" class="block text-sm font-medium text-gray-700 mb-1">Racks</label>
+                                        <input type="number" id="racksUnits" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksSwitches" class="block text-sm font-medium text-gray-700 mb-1">Switches</label>
+                                        <input type="number" id="racksSwitches" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksRouters" class="block text-sm font-medium text-gray-700 mb-1">Routers</label>
+                                        <input type="number" id="racksRouters" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksUPS" class="block text-sm font-medium text-gray-700 mb-1">UPS</label>
+                                        <input type="number" id="racksUPS" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksNVR" class="block text-sm font-medium text-gray-700 mb-1">NVR/DVR</label>
+                                        <input type="number" id="racksNVR" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksCentral" class="block text-sm font-medium text-gray-700 mb-1">Central Telefónica</label>
+                                        <input type="number" id="racksCentral" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksPatchPanels" class="block text-sm font-medium text-gray-700 mb-1">Patch Panels</label>
+                                        <input type="number" id="racksPatchPanels" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksMonitor" class="block text-sm font-medium text-gray-700 mb-1">Monitor</label>
+                                        <input type="number" id="racksMonitor" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksEstabilizador" class="block text-sm font-medium text-gray-700 mb-1">Estabilizador Voltaje</label>
+                                        <input type="number" id="racksEstabilizador" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksRouterISP" class="block text-sm font-medium text-gray-700 mb-1">Router ISP</label>
+                                        <input type="number" id="racksRouterISP" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksServidores" class="block text-sm font-medium text-gray-700 mb-1">Servidores</label>
+                                        <input type="number" id="racksServidores" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="0" value="0">
+                                    </div>
+                                    <div>
+                                        <label for="racksArea" class="block text-sm font-medium text-gray-700 mb-1">Área</label>
+                                        <input type="text" id="racksArea" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" placeholder="Ej: Sala de Comunicaciones">
+                                    </div>
+                                </div>
+
+                                <!-- Checklist Racks -->
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="text-md font-semibold text-gray-900">Verificación Realizada</h5>
+                                    <button type="button" id="racksCheckToggleAll" class="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center">
+                                        <i class="fas fa-check-double mr-1"></i>
+                                        Marcar todos
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="limpieza_rack"><span class="text-sm text-gray-700">Limpieza rack/equipos</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="aspirado_polvo"><span class="text-sm text-gray-700">Aspirado de polvo</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="orden_cableado"><span class="text-sm text-gray-700">Orden de cableado</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="correccion_cableado"><span class="text-sm text-gray-700">Corrección cableado</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="conexion_tierra"><span class="text-sm text-gray-700">Conexión a tierra</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="revision_ups"><span class="text-sm text-gray-700">Revisión UPS/autonomía</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="revision_patch_panels"><span class="text-sm text-gray-700">Patch panels</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="revision_switches"><span class="text-sm text-gray-700">Switches/routers</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="ventilacion"><span class="text-sm text-gray-700">Ventilación general</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="fijaciones"><span class="text-sm text-gray-700">Fijaciones</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="seguridad_acceso"><span class="text-sm text-gray-700">Seguridad acceso</span></label>
+                                    <label class="flex items-center"><input type="checkbox" class="mr-3 text-purple-600 focus:ring-purple-500" name="racksCheck" value="alimentacion_electrica"><span class="text-sm text-gray-700">Alimentación eléctrica</span></label>
+                                </div>
                             </div>
                         </div>
 
@@ -487,6 +632,8 @@ if (!isset($_SESSION['user_id'])) {
     <!-- JavaScript -->
     <script src="js/data-service.js"></script>
     <script src="js/pdf/cctv-pdf.js"></script>
+    <script src="js/pdf/hardware-pdf.js"></script>
+    <script src="js/pdf/racks-pdf.js"></script>
     <script src="js/maintenance-system.js"></script>
     
 </body>
