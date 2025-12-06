@@ -4,7 +4,7 @@
   "files.defaultLanguage": "markdown",
   "workbench.startupEditor": "readme",
   "workbench.editor.pinnedTabSizing": "compact",
-  "workbench.editor.showTabs": true,
+  "workbench.editor.showTabs": "multiple",
   "workbench.editor.tabSizing": "fit",
   
   // Mostrar archivos importantes primero
@@ -19,5 +19,6 @@
   
   // Auto-abrir archivos críticos
   "workbench.editor.restoreViewState": true,
-  "window.restoreWindows": "all"
+  "window.restoreWindows": "all",
+  "chat.agent.maxRequests": 40
 }

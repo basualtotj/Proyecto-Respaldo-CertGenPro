@@ -106,14 +106,20 @@ class DataService {
                 if (!response.ok) {
                     // intentar leer JSON; si no es JSON, leer texto
                     let errorMsg = response.statusText;
+                    let parsed = null;
                     try {
-                        const ed = await response.json();
-                        errorMsg = ed.message || ed.error || JSON.stringify(ed);
+                        parsed = await response.json();
+                        errorMsg = parsed.message || parsed.error || JSON.stringify(parsed);
                     } catch (_) {
                         const txt = await response.text();
                         errorMsg = txt?.slice(0, 300) || response.statusText;
                     }
-                    throw new Error(`HTTP ${response.status}: ${errorMsg}`);
+                    const err = new Error(`HTTP ${response.status}: ${errorMsg}`);
+                    err.status = response.status;
+                    if (parsed) {
+                        err.data = parsed.details || parsed.data || null;
+                    }
+                    throw err;
                 }
                 
                 // Parse robusto: primero texto, luego JSON
@@ -156,13 +162,23 @@ class DataService {
             } catch (error) {
                 lastError = error;
                 console.warn(`❌ API Error (intento ${attempt}):`, error.message);
-                
+
+                // Si es error de cliente (4xx), no reintentar, retornar tal cual para que UI actúe (ej. 409)
+                if (error && typeof error.status === 'number' && error.status >= 400 && error.status < 500) {
+                    throw error; // preserva status y details
+                }
+
                 if (attempt < this.retryAttempts) {
                     console.log(`⏳ Reintentando en ${this.retryDelay}ms...`);
                     await this.delay(this.retryDelay * attempt);
                 } else {
                     console.error('🚨 Todos los reintentos fallaron. No se hará fallback a JSON.');
-                    throw new Error(`API no disponible: ${error.message}`);
+                    // Preservar status/details si existen
+                    if (lastError && lastError.status) {
+                        throw lastError;
+                    }
+                    const wrapped = new Error(`API no disponible: ${lastError?.message || 'Error desconocido'}`);
+                    throw wrapped;
                 }
             }
         }
@@ -203,8 +219,16 @@ class DataService {
      * Obtener técnicos
      */
     async getTecnicos() {
-    console.log('👨‍🔧 Obteniendo técnicos desde API...');
+    console.log('👨‍🔧 Obteniendo técnicos activos (sin placeholders) desde API...');
     return await this.apiCall('/tecnicos');
+    }
+
+    /**
+     * Obtener todos los técnicos (incluye inactivos y placeholder) para usos administrativos puntuales
+     */
+    async getTecnicosTodos() {
+        console.log('👨‍🔧 Obteniendo TODOS los técnicos (admin)...');
+        return await this.apiCall('/tecnicos?include_all=1');
     }
 
     /**
@@ -631,6 +655,68 @@ class DataService {
             }
         } catch (error) {
             console.error('Error eliminando técnico:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Obtener conteo de certificados asociados a un técnico
+     */
+    async getTecnicoCertCount(id) {
+        try {
+            if (this.mode === 'api') {
+                console.log(`📊 Obteniendo conteo certificados para técnico ${id}...`);
+                const result = await this.apiCall(`/tecnicos/${id}/certificados/count`, 'GET');
+                if (result && result.success && result.data) {
+                    return result.data.certificados_count ?? 0;
+                }
+                return 0;
+            } else {
+                console.log('📊 Conteo técnico en JSON (simulado)');
+                return 0;
+            }
+        } catch (error) {
+            console.error('Error obteniendo conteo certificados técnico:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Inactivar técnico (activo=0) en vez de eliminar cuando tiene certificados
+     */
+    async inactivarTecnico(id) {
+        try {
+            if (this.mode === 'api') {
+                console.log(`🚫 Inactivando técnico ${id}...`);
+                const result = await this.apiCall(`/tecnicos/${id}`, 'PUT', { activo: 0 });
+                this.clearCache('tecnicos');
+                return result;
+            } else {
+                console.log('🚫 Inactivando técnico en JSON (simulado)');
+                return { success: true, data: { id, activo: 0 } };
+            }
+        } catch (error) {
+            console.error('Error inactivando técnico:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Eliminación forzada con reasignación de certificados a placeholder
+     */
+    async forceDeleteTecnico(id) {
+        try {
+            if (this.mode === 'api') {
+                console.log(`⚠️ Eliminación forzada de técnico ${id}...`);
+                const result = await this.apiCall(`/tecnicos/${id}/force`, 'DELETE');
+                this.clearCache('tecnicos');
+                return result;
+            } else {
+                console.log('⚠️ Eliminación forzada en JSON (simulado)');
+                return { success: true, message: 'Técnico eliminado con reasignación (simulado)' };
+            }
+        } catch (error) {
+            console.error('Error en eliminación forzada técnico:', error);
             throw error;
         }
     }

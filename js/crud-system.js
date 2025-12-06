@@ -1203,7 +1203,63 @@ class CRUDSystem {
                     result = await this.dataService.deleteInstalacion(id);
                     break;
                 case 'tecnico':
-                    result = await this.dataService.deleteTecnico(id);
+                    // Pre-chequeo de certificados asociados
+                    const certCount = await this.dataService.getTecnicoCertCount(id);
+                    if (certCount > 0) {
+                        // Bloquear eliminación dura por defecto; ofrecer inactivación o eliminación forzada
+                        const msg = `Este técnico tiene ${certCount} certificado(s) emitido(s).\n- Inactivar: mantiene historial y oculta al técnico.\n- Eliminar forzado: reasigna certificados a 'Técnico Eliminado' y borra el registro.\n\n¿Quieres INACTIVARLO ahora? (Aceptar = Inactivar, Cancelar = Ver opciones)`;
+                        if (confirm(msg)) {
+                            const inact = await this.dataService.inactivarTecnico(id);
+                            if (inact.success) {
+                                await this.refreshData();
+                                this.showSuccess('Técnico inactivado correctamente');
+                                return; // Fin flujo
+                            } else {
+                                this.showError('No se pudo inactivar técnico');
+                                return;
+                            }
+                        } else {
+                            // Preguntar si desea eliminación forzada con reasignación
+                            const force = confirm('¿Deseas ELIMINAR FORZADO reasignando sus certificados a "Técnico Eliminado"? Esta acción es irreversible.');
+                            if (force) {
+                                const res = await this.dataService.forceDeleteTecnico(id);
+                                if (res && res.success) {
+                                    await this.refreshData();
+                                    this.showSuccess('Técnico eliminado y certificados reasignados');
+                                } else {
+                                    this.showError('No se pudo eliminar forzado');
+                                }
+                                return;
+                            } else {
+                                this.showError('Operación cancelada. Técnico mantiene estado actual.');
+                                return;
+                            }
+                        }
+                    } else {
+                        // Intentar eliminación
+                        try {
+                            result = await this.dataService.deleteTecnico(id);
+                        } catch (err) {
+                            // Si API devolvió 409 con info de referencia, ofrecer eliminación forzada inmediata
+                            if (err && err.status === 409 && err.data) {
+                                const c = err.data.certificados_count ?? '?';
+                                const force = confirm(`No se puede eliminar: tiene ${c} certificado(s).\n¿Eliminar FORZADO reasignando a 'Técnico Eliminado (sistema)'?`);
+                                if (force) {
+                                    const res = await this.dataService.forceDeleteTecnico(id);
+                                    if (res && res.success !== false) {
+                                        await this.refreshData();
+                                        this.showSuccess('Técnico eliminado y certificados reasignados');
+                                        return;
+                                    }
+                                    this.showError('No se pudo eliminar forzado');
+                                    return;
+                                }
+                                this.showError('Operación cancelada. Técnico mantiene estado actual.');
+                                return;
+                            }
+                            throw err;
+                        }
+                    }
                     break;
                 case 'empresa':
                     result = await this.dataService.deleteEmpresa(id);

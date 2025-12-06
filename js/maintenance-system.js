@@ -309,24 +309,27 @@ class MaintenanceCertificateSystem {
             const cd = ultimo.checklist_data;
             let checklistItems = [];
             let equipos = null;
-            
-            // Procesar checklist_data si existe
+
+            // Procesar checklist_data si existe (soporta string JSON u objeto/array)
             if (cd) {
-                if (Array.isArray(cd)) {
-                    // Estructura: array directo
-                    checklistItems = cd;
-                } else if (typeof cd === 'object') {
-                    // Estructura: objeto con diferentes propiedades
-                    checklistItems = cd.checklist || cd.items || cd.list || [];
-                    equipos = cd.equipos || null;
-                    
-                    if (!Array.isArray(checklistItems) && typeof cd === 'object') {
-                        // Buscar cualquier array dentro del objeto
-                        for (const [key, value] of Object.entries(cd)) {
-                            if (Array.isArray(value) && value.length > 0) {
-                                checklistItems = value;
-                                break;
-                            }
+                let parsed = cd;
+                if (typeof cd === 'string') {
+                    try {
+                        parsed = JSON.parse(cd);
+                    } catch (e) {
+                        console.warn('[DEBUG] checklist_data no es JSON válido:', e?.message || e);
+                        parsed = null;
+                    }
+                }
+                if (Array.isArray(parsed)) {
+                    checklistItems = parsed;
+                } else if (parsed && typeof parsed === 'object') {
+                    checklistItems = parsed.checklist || parsed.items || parsed.list || [];
+                    equipos = parsed.equipos || null;
+                    if (!Array.isArray(checklistItems)) {
+                        // Buscar un array significativo dentro del objeto
+                        for (const [k, v] of Object.entries(parsed)) {
+                            if (Array.isArray(v) && v.length > 0) { checklistItems = v; break; }
                         }
                     }
                 }
@@ -357,43 +360,67 @@ class MaintenanceCertificateSystem {
             console.log('[DEBUG] checklistItems procesados finales:', checklistItems);
             console.log('[DEBUG] equipos procesados finales:', equipos);
             
-            // Limpiar checklist actual
-            document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => cb.checked = false);
-            
-            // Marcar elementos del checklist
-            if (Array.isArray(checklistItems) && checklistItems.length > 0) {
-                let marcados = 0;
-                document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => {
-                    if (checklistItems.includes(cb.value)) {
-                        cb.checked = true;
-                        marcados++;
-                        console.log('[DEBUG] Checklist marcado:', cb.value);
-                    }
-                });
-                console.log(`[DEBUG] Total checkboxes marcados: ${marcados}`);
-            } else {
-                console.log('[DEBUG] No hay elementos de checklist para marcar');
-            }
-
-            // Rellenar equipos
-            console.log('[DEBUG] equipos a procesar:', equipos);
-            
-            if (equipos && typeof equipos === 'object') {
-                const fill = (id, v) => { 
-                    const el = document.getElementById(id); 
-                    if (el && v != null && v !== '') {
-                        el.value = String(v);
-                        console.log(`[DEBUG] Campo ${id} = ${v}`);
-                    }
-                };
-                fill('camarasIP', equipos.camaras_ip);
-                fill('camarasAnalogicas', equipos.camaras_analogicas);
-                fill('nvr', equipos.nvr);
-                fill('dvr', equipos.dvr);
-                fill('monitores', equipos.monitores);
-                fill('joystick', equipos.joystick);
-            } else {
-                console.log('[DEBUG] No hay datos de equipos para rellenar');
+            // Aplicar mapeo por tipo
+            const tipo = (this.currentCertificateType || '').toLowerCase();
+            if (tipo === 'cctv') {
+                // Limpiar y marcar checklist CCTV
+                document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => cb.checked = false);
+                if (Array.isArray(checklistItems) && checklistItems.length) {
+                    document.querySelectorAll('input[name="cctvCheck"]').forEach(cb => {
+                        if (checklistItems.includes(cb.value)) cb.checked = true;
+                    });
+                }
+                // Equipos CCTV
+                if (equipos && typeof equipos === 'object') {
+                    const fill = (id, v) => { const el = document.getElementById(id); if (el && v != null && v !== '') el.value = String(v); };
+                    fill('camarasIP', equipos.camaras_ip);
+                    fill('camarasAnalogicas', equipos.camaras_analogicas);
+                    fill('nvr', equipos.nvr);
+                    fill('dvr', equipos.dvr);
+                    fill('monitores', equipos.monitores);
+                    fill('joystick', equipos.joystick);
+                }
+            } else if (tipo === 'hardware') {
+                // Limpiar y marcar checklist Hardware
+                document.querySelectorAll('input[name="hardwareCheck"]').forEach(cb => cb.checked = false);
+                if (Array.isArray(checklistItems) && checklistItems.length) {
+                    document.querySelectorAll('input[name="hardwareCheck"]').forEach(cb => {
+                        if (checklistItems.includes(cb.value)) cb.checked = true;
+                    });
+                }
+                // Equipos Hardware
+                if (equipos && typeof equipos === 'object') {
+                    const fill = (id, v) => { const el = document.getElementById(id); if (el && v != null && v !== '') el.value = String(v); };
+                    fill('hardwarePCs', equipos.pcs);
+                    fill('hardwareNotebooks', equipos.notebooks);
+                    fill('hardwareServidores', equipos.servidores);
+                    fill('hardwareUPS', equipos.ups);
+                    fill('hardwareArea', equipos.area);
+                }
+            } else if (tipo === 'racks') {
+                // Limpiar y marcar checklist Racks
+                document.querySelectorAll('input[name="racksCheck"]').forEach(cb => cb.checked = false);
+                if (Array.isArray(checklistItems) && checklistItems.length) {
+                    document.querySelectorAll('input[name="racksCheck"]').forEach(cb => {
+                        if (checklistItems.includes(cb.value)) cb.checked = true;
+                    });
+                }
+                // Equipos Racks
+                if (equipos && typeof equipos === 'object') {
+                    const fill = (id, v) => { const el = document.getElementById(id); if (el && v != null && v !== '') el.value = String(v); };
+                    fill('racksUnits', equipos.racks);
+                    fill('racksSwitches', equipos.switches);
+                    fill('racksRouters', equipos.routers);
+                    fill('racksUPS', equipos.ups);
+                    fill('racksNVR', equipos.nvr);
+                    fill('racksCentral', equipos.central);
+                    fill('racksPatchPanels', equipos.patch_panels);
+                    fill('racksMonitor', equipos.monitor);
+                    fill('racksEstabilizador', equipos.estabilizador);
+                    fill('racksRouterISP', equipos.router_isp);
+                    fill('racksServidores', equipos.servidores);
+                    fill('racksArea', equipos.area);
+                }
             }
 
             // Forzar actualización del preview y otros elementos
@@ -407,8 +434,9 @@ class MaintenanceCertificateSystem {
                 }
             });
             
-            // Disparar eventos para checkboxes marcados
-            document.querySelectorAll('input[name="cctvCheck"]:checked').forEach(cb => {
+            // Disparar eventos para checkboxes marcados del tipo activo
+            const groupName = tipo === 'hardware' ? 'hardwareCheck' : (tipo === 'racks' ? 'racksCheck' : 'cctvCheck');
+            document.querySelectorAll(`input[name="${groupName}"]:checked`).forEach(cb => {
                 cb.dispatchEvent(new Event('change', { bubbles: true }));
             });
             const loadLastBtn = document.getElementById('loadLastBtn');

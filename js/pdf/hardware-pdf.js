@@ -840,9 +840,9 @@
 
   // Primera página de evidencias
   doc.addPage('a4', 'portrait');
-  const headerBottom = await this.addHeader(doc, data); // devuelve M+38
-  // Reducir el espacio respecto al header (antes +10mm); ahora ~ +6mm
-  topY = headerBottom - 38 + headerH + 6; // equivalente a M + 44
+  const headerBottom = await this.addHeader(doc, data); // devuelve aproximadamente M + 38
+  // Usar el borde inferior real del header y sumar un pequeño offset
+  topY = headerBottom + 2;
   let y = drawSectionHeader();
 
       while (true) {
@@ -868,7 +868,8 @@
           this.addFooter(doc, data);
           doc.addPage('a4', 'portrait');
           const hb2 = await this.addHeader(doc, data);
-          topY = hb2 - 38 + headerH + 6; // mantener mismo cálculo en páginas siguientes
+          // Mantener criterio compacto en páginas siguientes
+          topY = hb2 + 2;
           y = drawSectionHeader();
         }
         const rowH = drawRow(row, y);

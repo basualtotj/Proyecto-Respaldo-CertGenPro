@@ -554,8 +554,22 @@ function getTecnicos($params) {
                 ApiResponse::notFound('Técnico');
             }
         } else {
-            // Devolver TODOS los técnicos para que el CRUD muestre activos e inactivos
-            $data = $tecnico->findAll();
+            // Por defecto, ocultar inactivos y el placeholder del sistema
+            $includeAll = isset($_GET['include_all']) && $_GET['include_all'] == '1';
+            if ($includeAll) {
+                $data = $tecnico->findAll();
+            } else {
+                // activos=1 y excluir placeholder por nombre o email
+                $all = $tecnico->findAll(['activo' => 1]);
+                $data = array_values(array_filter($all, function($t) {
+                    $name = $t['nombre'] ?? '';
+                    $email = $t['email'] ?? '';
+                    if (stripos($name, 'Técnico Eliminado (sistema)') === 0) return false;
+                    if (stripos($name, 'Técnico Eliminado (auto)') === 0) return false;
+                    if ($email === 'deleted@system.local') return false;
+                    return true;
+                }));
+            }
         }
         
         ApiResponse::success($data, 'Técnicos obtenidos correctamente');
@@ -619,8 +633,33 @@ function deleteTecnico($params) {
         }
         
         $tecnico = new Tecnico();
+        $existing = $tecnico->findById($params['id']);
+        if (!$existing) {
+            ApiResponse::notFound('Técnico');
+        }
+
+        // Proteger placeholder del sistema
+        if (isset($existing['nombre']) && stripos($existing['nombre'], 'Técnico Eliminado (sistema)') === 0) {
+            ApiResponse::error('No se puede eliminar el técnico placeholder del sistema', 409, ['placeholder' => true]);
+        }
+        $certModel = new Certificado();
+        $certCount = $certModel->count(['tecnico_id' => $params['id']]);
+
+        if ($certCount > 0) {
+            // Bloquear eliminación dura; sugerir inactivación
+            ApiResponse::error(
+                'No se puede eliminar: técnico referenciado en certificados existentes',
+                409,
+                [
+                    'referenced' => true,
+                    'certificados_count' => $certCount,
+                    'action' => 'inactivar'
+                ]
+            );
+        }
+
         $result = $tecnico->delete($params['id']);
-        
+
         if ($result) {
             ApiResponse::success(null, 'Técnico eliminado correctamente');
         } else {
@@ -628,6 +667,77 @@ function deleteTecnico($params) {
         }
     } catch (Exception $e) {
         ApiResponse::error('Error al eliminar técnico: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Eliminación forzada de técnico: reasigna certificados a "Técnico Eliminado" y elimina el registro
+ */
+function forceDeleteTecnico($params) {
+    try {
+        if (!isset($params['id'])) {
+            ApiResponse::error('ID requerido', 400);
+        }
+
+        $db = Database::getInstance();
+        $conn = $db->getConnection();
+        $tecnicoId = (int)$params['id'];
+
+        // Verificar existencia del técnico
+        $tecModel = new Tecnico();
+        $existing = $tecModel->findById($tecnicoId);
+        if (!$existing) {
+            ApiResponse::notFound('Técnico');
+        }
+
+        // Contar certificados asociados
+        $certModel = new Certificado();
+        $certCount = $certModel->count(['tecnico_id' => $tecnicoId]);
+
+        $conn->beginTransaction();
+
+        $reassignedToId = null;
+        $reassigned = 0;
+
+        if ($certCount > 0) {
+            // Usar un ÚNICO placeholder del sistema
+            $stmt = $conn->prepare("SELECT id FROM tecnicos WHERE email = ? OR nombre = ? LIMIT 1");
+            $stmt->execute(['deleted@system.local', 'Técnico Eliminado (sistema)']);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && isset($row['id'])) {
+                $reassignedToId = (int)$row['id'];
+            } else {
+                $stmtIns = $conn->prepare("INSERT INTO tecnicos (nombre, especialidad, telefono, email, activo) VALUES ('Técnico Eliminado (sistema)', 'N/A', '', 'deleted@system.local', 0)");
+                $stmtIns->execute();
+                $reassignedToId = (int)$conn->lastInsertId();
+            }
+
+            // Si intentan eliminar el propio placeholder, bloquear
+            if ($tecnicoId === $reassignedToId) {
+                $conn->rollback();
+                ApiResponse::error('No se puede eliminar el técnico placeholder del sistema', 409, ['placeholder' => true]);
+            }
+
+            // Reasignar certificados
+            $stmtUpd = $conn->prepare("UPDATE certificados SET tecnico_id = ? WHERE tecnico_id = ?");
+            $stmtUpd->execute([$reassignedToId, $tecnicoId]);
+            $reassigned = $stmtUpd->rowCount();
+        }
+
+        // Eliminar técnico
+        $stmtDel = $conn->prepare("DELETE FROM tecnicos WHERE id = ?");
+        $stmtDel->execute([$tecnicoId]);
+
+        $conn->commit();
+
+        ApiResponse::success([
+            'deleted_id' => $tecnicoId,
+            'reassigned' => $reassigned,
+            'reassigned_to' => $reassignedToId
+        ], $certCount > 0 ? 'Técnico eliminado y certificados reasignados' : 'Técnico eliminado');
+    } catch (Exception $e) {
+        try { Database::getInstance()->rollback(); } catch (Exception $ignore) {}
+        ApiResponse::error('Error en eliminación forzada: ' . $e->getMessage(), 500);
     }
 }
 
@@ -1164,9 +1274,27 @@ try {
     // Técnicos
     $router->get('/api/tecnicos', 'getTecnicos');
     $router->get('/api/tecnicos/{id}', 'getTecnicos');
+    // Conteo certificados por técnico (para bloqueo eliminación)
+    $router->get('/api/tecnicos/{id}/certificados/count', function($params) {
+        try {
+            if (!isset($params['id'])) {
+                ApiResponse::error('ID requerido', 400);
+            }
+            $certModel = new Certificado();
+            $count = $certModel->count(['tecnico_id' => $params['id']]);
+            ApiResponse::success([
+                'tecnico_id' => (int)$params['id'],
+                'certificados_count' => (int)$count
+            ]);
+        } catch (Exception $e) {
+            ApiResponse::error('Error obteniendo conteo de certificados: ' . $e->getMessage(), 500);
+        }
+    });
     $router->post('/api/tecnicos', 'createTecnico');
     $router->put('/api/tecnicos/{id}', 'updateTecnico');
     $router->delete('/api/tecnicos/{id}', 'deleteTecnico');
+    // Eliminación forzada con reasignación
+    $router->delete('/api/tecnicos/{id}/force', 'forceDeleteTecnico');
     
     // Empresa
     $router->get('/api/empresa', 'getEmpresa');

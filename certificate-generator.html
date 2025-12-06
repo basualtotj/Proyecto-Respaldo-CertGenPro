@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Certificados - Inicio</title>
+        <title>Sistema de Certificados - Inicio</title>
+        <!-- AVISO: Este archivo HTML está obsoleto. Use certificate-generator.php -->
+        <meta name="robots" content="noindex, nofollow">
+        <style>
+            /* Banner deprecado visible antes del redirect */
+            .deprecated-banner{position:fixed;z-index:9999;top:0;left:0;right:0;background:#fee2e2;color:#7f1d1d;border-bottom:1px solid #fecaca;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;}
+            .deprecated-banner .inner{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;gap:8px;align-items:center;}
+            .deprecated-banner a{color:#991b1b;text-decoration:underline;}
+        </style>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?v=3.4.0"></script>
@@ -123,6 +131,30 @@
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <!-- Deprecation: redirigir automáticamente a la versión válida en PHP -->
+        <div class="deprecated-banner" role="status" aria-live="polite">
+            <div class="inner">
+                <strong>Este archivo está obsoleto:</strong>
+                Usa <code>certificate-generator.php</code>. Serás redirigido automáticamente...
+                <a href="certificate-generator.php">Ir ahora</a>
+            </div>
+        </div>
+        <noscript>
+            <div style="margin-top:56px" class="deprecated-noscript">
+                <div class="inner" style="max-width:1100px;margin:0 auto;padding:10px 16px;">
+                    Este archivo HTML está obsoleto. Abre <a href="certificate-generator.php">certificate-generator.php</a>.
+                </div>
+            </div>
+        </noscript>
+        <script>
+            (function(){
+                try {
+                    var dest = 'certificate-generator.php' + (window.location.search || '') + (window.location.hash || '');
+                    // breve pausa para que el banner sea visible
+                    setTimeout(function(){ window.location.replace(dest); }, 900);
+                } catch(e) { /* noop */ }
+            })();
+        </script>
     
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-6">
